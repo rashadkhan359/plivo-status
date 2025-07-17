@@ -28,7 +28,11 @@ export default function ServiceEdit({ service }: PageProps<Props>) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    patch(route('services.update', service.data.id));
+    patch(route('services.update', service.data.id), {
+      onSuccess: () => {
+        // Redirect to services index on success
+      }
+    });
   }
 
   return (

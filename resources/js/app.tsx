@@ -5,10 +5,24 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 import { configureEcho } from '@laravel/echo-react';
+import Pusher from 'pusher-js';
 
-configureEcho({
+// Configure Echo with Pusher
+const echo = configureEcho({
     broadcaster: 'pusher',
+    key: import.meta.env.VITE_PUSHER_APP_KEY || 'local',
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
+    wsHost: import.meta.env.VITE_PUSHER_HOST || 'localhost',
+    wsPort: import.meta.env.VITE_PUSHER_PORT || 6001,
+    wssPort: import.meta.env.VITE_PUSHER_PORT || 6001,
+    forceTLS: (import.meta.env.VITE_PUSHER_SCHEME || 'http') === 'https',
+    enabledTransports: ['ws', 'wss'],
+    disableStats: true,
 });
+
+// Make Echo available globally for useRealtime hook
+// @ts-ignore
+window.Echo = echo;
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

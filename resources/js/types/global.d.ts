@@ -6,4 +6,8 @@ declare global {
     const route: typeof routeFn;
 
     type PageProps<T = {}> = T & SharedData;
+
+    interface Window {
+        Echo: any;
+    }
 }

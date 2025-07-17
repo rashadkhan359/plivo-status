@@ -3,6 +3,26 @@ import type { Config } from 'ziggy-js';
 
 export interface Auth {
     user: User;
+    currentOrganization?: {
+        id: number;
+        name: string;
+        slug: string;
+        domain?: string;
+        settings: Record<string, any>;
+        timezone: string;
+        created_at: string;
+        updated_at: string;
+    };
+    currentRole?: 'owner' | 'admin' | 'team_lead' | 'member';
+    currentPermissions?: {
+        manage_organization?: boolean;
+        manage_users?: boolean;
+        manage_teams?: boolean;
+        manage_services?: boolean;
+        manage_incidents?: boolean;
+        manage_maintenance?: boolean;
+        view_analytics?: boolean;
+    };
 }
 
 export interface BreadcrumbItem {
@@ -23,22 +43,27 @@ export interface NavItem {
 }
 
 export interface SharedData {
-    name: string;
-    quote: { message: string; author: string };
     auth: Auth;
-    ziggy: Config & { location: string };
+    name: string;
+    quote: {
+        message: string;
+        author: string;
+    };
+    ziggy: {
+        location: string;
+        query: Record<string, string>;
+        params: Record<string, string>;
+        route: string;
+    };
     sidebarOpen: boolean;
-    [key: string]: unknown;
 }
 
 export interface User {
     id: number;
     name: string;
     email: string;
+    email_verified_at?: string;
     avatar?: string;
-    email_verified_at: string | null;
-    created_at: string;
-    updated_at: string;
-    role: string;
-    [key: string]: unknown; // This allows for additional properties...
+    organization_id?: number; // Legacy field
+    role?: string; // Legacy field
 }

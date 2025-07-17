@@ -25,6 +25,12 @@ class IncidentResource extends JsonResource
             'resolved_at' => $this->resolved_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'service' => $this->whenLoaded('service', function () {
+                return [
+                    'id' => $this->service->id,
+                    'name' => $this->service->name,
+                ];
+            }),
         ];
     }
 } 

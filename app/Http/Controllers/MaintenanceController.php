@@ -3,14 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Maintenance;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Enums\MaintenanceStatus;
 use App\Http\Resources\MaintenanceResource;
 use App\Http\Resources\ServiceResource;
-use Illuminate\Support\Facades\Broadcast;
+use App\Events\MaintenanceScheduled;
 use Illuminate\Validation\Rules\Enum;
 
 class MaintenanceController extends Controller
@@ -20,30 +22,33 @@ class MaintenanceController extends Controller
      */
     public function index(Request $request): Response
     {
-        $organization = Auth::user()->organization;
-        $maintenances = Maintenance::forOrganization($organization->id)->get();
+        $this->authorize('viewAny', Maintenance::class);
+        
+        $organization = App::get('current_organization');
+        $user = Auth::user();
+        
+        // Get maintenances accessible to the user
+        $maintenances = $this->getAccessibleMaintenances($user, $organization);
 
         return Inertia::render('maintenances/index', [
             'maintenances' => MaintenanceResource::collection($maintenances),
+            'canCreate' => $user->can('create', Maintenance::class),
         ]);
     }
 
     /**
-     * API: List maintenances
+     * Show the form for creating a new maintenance.
      */
-    public function apiIndex(Request $request)
+    public function create(Request $request): Response
     {
+        $this->authorize('create', Maintenance::class);
+        
+        $organization = App::get('current_organization');
         $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
-        $organization = $user->organization;
-        $maintenances = Maintenance::forOrganization($organization->id)->get();
-        return MaintenanceResource::collection($maintenances);
-    }
-
-    public function create(Request $request){
-        $user = Auth::user();
-        $organization = $user->organization;
-        $services = $organization->services()->get();
+        
+        // Get services accessible to the user
+        $services = $this->getAccessibleServices($user, $organization);
+        
         return Inertia::render('maintenances/create', [
             'services' => ServiceResource::collection($services),
         ]);
@@ -54,40 +59,35 @@ class MaintenanceController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Maintenance::class);
+        
+        $organization = App::get('current_organization');
         $user = Auth::user();
-        $organization = $user->organization;
+        
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_id' => 'nullable|exists:services,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'scheduled_start' => 'required|date',
-            'scheduled_end' => 'required|date|after:scheduled_start',
             'status' => ['required', new Enum(MaintenanceStatus::class)],
-        ]);
-        $maintenance = $organization->maintenances()->create($validated);
-        Broadcast::event('maintenance.status.updated', $maintenance);
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance created.');
-    }
-
-    /**
-     * API: Store maintenance
-     */
-    public function apiStore(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
-        $organization = $user->organization;
-        $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'scheduled_start' => 'required|date',
+            'scheduled_start' => 'required|date|after:now',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => ['required', new Enum(MaintenanceStatus::class)],
         ]);
-        $maintenance = $organization->maintenances()->create($validated);
-        Broadcast::event('maintenance.status.updated', $maintenance);
-        return new MaintenanceResource($maintenance);
+        
+        // Validate service belongs to organization if provided
+        if ($validated['service_id']) {
+            $service = $organization->services()
+                ->where('id', $validated['service_id'])
+                ->firstOrFail();
+        }
+        
+        $maintenance = $organization->maintenances()->create([
+            ...$validated,
+            'created_by' => $user->id,
+        ]);
+        
+        event(new MaintenanceScheduled($maintenance));
+        
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance scheduled.');
     }
 
     /**
@@ -96,8 +96,16 @@ class MaintenanceController extends Controller
     public function edit(Maintenance $maintenance): Response
     {
         $this->authorize('update', $maintenance);
-        return Inertia::render('maintenance/edit', [
-            'maintenance' => new MaintenanceResource($maintenance),
+        
+        $organization = App::get('current_organization');
+        $user = Auth::user();
+        
+        // Get services accessible to the user
+        $services = $this->getAccessibleServices($user, $organization);
+        
+        return Inertia::render('maintenances/edit', [
+            'maintenance' => new MaintenanceResource($maintenance->load('service')),
+            'services' => ServiceResource::collection($services),
         ]);
     }
 
@@ -107,36 +115,30 @@ class MaintenanceController extends Controller
     public function update(Request $request, Maintenance $maintenance)
     {
         $this->authorize('update', $maintenance);
+        
+        $organization = App::get('current_organization');
+        
         $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'service_id' => 'nullable|exists:services,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'status' => ['required', new Enum(MaintenanceStatus::class)],
             'scheduled_start' => 'required|date',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => ['required', new Enum(MaintenanceStatus::class)],
+            'actual_start' => 'nullable|date',
+            'actual_end' => 'nullable|date|after:actual_start',
         ]);
+        
+        // Validate service belongs to organization if provided
+        if ($validated['service_id']) {
+            $service = $organization->services()
+                ->where('id', $validated['service_id'])
+                ->firstOrFail();
+        }
+        
         $maintenance->update($validated);
-        Broadcast::event('maintenance.status.updated', $maintenance);
+        
         return redirect()->route('maintenances.index')->with('success', 'Maintenance updated.');
-    }
-
-    /**
-     * API: Update maintenance
-     */
-    public function apiUpdate(Request $request, Maintenance $maintenance)
-    {
-        $this->authorize('update', $maintenance);
-        $validated = $request->validate([
-            'service_id' => 'required|exists:services,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'scheduled_start' => 'required|date',
-            'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => ['required', new Enum(MaintenanceStatus::class)],
-        ]);
-        $maintenance->update($validated);
-        Broadcast::event('maintenance.status.updated', $maintenance);
-        return new MaintenanceResource($maintenance);
     }
 
     /**
@@ -146,16 +148,85 @@ class MaintenanceController extends Controller
     {
         $this->authorize('delete', $maintenance);
         $maintenance->delete();
-        return redirect()->route('maintenancesindex')->with('success', 'Maintenance deleted.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance deleted.');
     }
 
     /**
-     * API: Delete maintenance
+     * Start the maintenance.
      */
-    public function apiDestroy(Maintenance $maintenance)
+    public function start(Maintenance $maintenance)
     {
-        $this->authorize('delete', $maintenance);
-        $maintenance->delete();
-        return response()->json(['message' => 'Maintenance deleted.']);
+        $this->authorize('update', $maintenance);
+        
+        $maintenance->update([
+            'status' => MaintenanceStatus::IN_PROGRESS,
+            'actual_start' => now(),
+        ]);
+        
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance started.');
+    }
+
+    /**
+     * Complete the maintenance.
+     */
+    public function complete(Maintenance $maintenance)
+    {
+        $this->authorize('update', $maintenance);
+        
+        $maintenance->update([
+            'status' => MaintenanceStatus::COMPLETED,
+            'actual_end' => now(),
+        ]);
+        
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance completed.');
+    }
+
+    /**
+     * Get maintenances accessible to the user
+     */
+    protected function getAccessibleMaintenances($user, $organization)
+    {
+        $query = $organization->maintenances()->with(['service', 'creator']);
+        
+        // If user is not admin/owner, filter by their team's services
+        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+            $userTeamIds = $user->teams()->pluck('teams.id');
+            
+            $query->where(function ($q) use ($userTeamIds) {
+                // Show maintenances for services in user's teams
+                $q->whereHas('service', function ($subQ) use ($userTeamIds) {
+                    $subQ->whereIn('team_id', $userTeamIds);
+                })
+                // Or maintenances without specific service
+                ->orWhereNull('service_id');
+            });
+        }
+        
+        return $query->latest('scheduled_start')->get();
+    }
+
+    /**
+     * Get services accessible to the user
+     */
+    protected function getAccessibleServices($user, $organization)
+    {
+        $query = $organization->services()->with(['team']);
+        
+        // If user is not admin/owner, filter by visibility and team membership
+        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+            $userTeamIds = $user->teams()->pluck('teams.id');
+            
+            $query->where(function ($q) use ($userTeamIds) {
+                // Public services are always visible
+                $q->where('visibility', 'public')
+                  // Or private services where user is in the team
+                  ->orWhere(function ($subQ) use ($userTeamIds) {
+                      $subQ->where('visibility', 'private')
+                           ->whereIn('team_id', $userTeamIds);
+                  });
+            });
+        }
+        
+        return $query->orderBy('order')->get();
     }
 } 

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Http\Resources\IncidentUpdateResource;
-use Illuminate\Support\Facades\Broadcast;
+use App\Events\IncidentUpdateCreated;
 
 class IncidentUpdateController extends Controller
 {
@@ -47,7 +47,7 @@ class IncidentUpdateController extends Controller
             'status' => 'required|in:investigating,identified,monitoring,resolved',
         ]);
         $update = $incident->updates()->create($validated);
-        Broadcast::event('incident.update.created', $update);
+        event(new IncidentUpdateCreated($update));
         return redirect()->route('incidents.updates.index', $incident)->with('success', 'Update added.');
     }
 
@@ -62,7 +62,7 @@ class IncidentUpdateController extends Controller
             'status' => 'required|in:investigating,identified,monitoring,resolved',
         ]);
         $update = $incident->updates()->create($validated);
-        Broadcast::event('incident.update.created', $update);
+        event(new IncidentUpdateCreated($update));
         return new IncidentUpdateResource($update);
     }
 } 

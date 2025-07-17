@@ -6,6 +6,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use Illuminate\Support\Facades\App;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -39,12 +40,33 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $user = $request->user();
+        $currentOrganization = App::instance('current_organization');
+        
+        // Get user's role and permissions in current organization
+        $currentRole = null;
+        $currentPermissions = [];
+        
+        if ($user && $currentOrganization) {
+            $userOrganization = $user->organizations()
+                ->where('organizations.id', $currentOrganization->id)
+                ->first();
+                
+            if ($userOrganization) {
+                $currentRole = $userOrganization->pivot->role;
+                $currentPermissions = $userOrganization->pivot->permissions ?? [];
+            }
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'currentOrganization' => $currentOrganization,
+                'currentRole' => $currentRole,
+                'currentPermissions' => $currentPermissions,
             ],
             'ziggy' => fn (): array => [
                 ...(new Ziggy)->toArray(),
