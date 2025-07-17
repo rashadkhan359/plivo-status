@@ -7,8 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Enums\MaintenanceStatus;
 use App\Http\Resources\MaintenanceResource;
+use App\Http\Resources\ServiceResource;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Validation\Rules\Enum;
 
 class MaintenanceController extends Controller
 {
@@ -19,6 +22,7 @@ class MaintenanceController extends Controller
     {
         $organization = Auth::user()->organization;
         $maintenances = Maintenance::forOrganization($organization->id)->get();
+
         return Inertia::render('maintenances/index', [
             'maintenances' => MaintenanceResource::collection($maintenances),
         ]);
@@ -36,6 +40,15 @@ class MaintenanceController extends Controller
         return MaintenanceResource::collection($maintenances);
     }
 
+    public function create(Request $request){
+        $user = Auth::user();
+        $organization = $user->organization;
+        $services = $organization->services()->get();
+        return Inertia::render('maintenances/create', [
+            'services' => ServiceResource::collection($services),
+        ]);
+    }
+
     /**
      * Store a newly created maintenance.
      */
@@ -49,7 +62,7 @@ class MaintenanceController extends Controller
             'description' => 'nullable|string',
             'scheduled_start' => 'required|date',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => 'required|in:scheduled,in_progress,completed',
+            'status' => ['required', new Enum(MaintenanceStatus::class)],
         ]);
         $maintenance = $organization->maintenances()->create($validated);
         Broadcast::event('maintenance.status.updated', $maintenance);
@@ -70,7 +83,7 @@ class MaintenanceController extends Controller
             'description' => 'nullable|string',
             'scheduled_start' => 'required|date',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => 'required|in:scheduled,in_progress,completed',
+            'status' => ['required', new Enum(MaintenanceStatus::class)],
         ]);
         $maintenance = $organization->maintenances()->create($validated);
         Broadcast::event('maintenance.status.updated', $maintenance);
@@ -83,7 +96,7 @@ class MaintenanceController extends Controller
     public function edit(Maintenance $maintenance): Response
     {
         $this->authorize('update', $maintenance);
-        return Inertia::render('maintenances/edit', [
+        return Inertia::render('maintenance/edit', [
             'maintenance' => new MaintenanceResource($maintenance),
         ]);
     }
@@ -100,7 +113,7 @@ class MaintenanceController extends Controller
             'description' => 'nullable|string',
             'scheduled_start' => 'required|date',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => 'required|in:scheduled,in_progress,completed',
+            'status' => ['required', new Enum(MaintenanceStatus::class)],
         ]);
         $maintenance->update($validated);
         Broadcast::event('maintenance.status.updated', $maintenance);
@@ -119,7 +132,7 @@ class MaintenanceController extends Controller
             'description' => 'nullable|string',
             'scheduled_start' => 'required|date',
             'scheduled_end' => 'required|date|after:scheduled_start',
-            'status' => 'required|in:scheduled,in_progress,completed',
+            'status' => ['required', new Enum(MaintenanceStatus::class)],
         ]);
         $maintenance->update($validated);
         Broadcast::event('maintenance.status.updated', $maintenance);
@@ -133,7 +146,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('delete', $maintenance);
         $maintenance->delete();
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance deleted.');
+        return redirect()->route('maintenancesindex')->with('success', 'Maintenance deleted.');
     }
 
     /**

@@ -24,11 +24,22 @@ class PublicStatusController extends Controller
         $services = Service::forOrganization($organization->id)->get();
         $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
         $maintenances = Maintenance::forOrganization($organization->id)->latest()->take(5)->get();
-        return Inertia::render('public/status', [
+
+        // Get the IDs of the incidents for the organization
+        $incidentIds = $incidents->pluck('id');
+
+        // Fetch the latest 15 updates for those incidents
+        $updates = \App\Models\IncidentUpdate::whereIn('incident_id', $incidentIds)
+            ->latest()
+            ->take(15)
+            ->get();
+
+        return Inertia::render('public-status-page', [
             'organization' => $organization,
             'services' => ServiceResource::collection($services),
             'incidents' => IncidentResource::collection($incidents),
             'maintenances' => MaintenanceResource::collection($maintenances),
+            'updates' => \App\Http\Resources\IncidentUpdateResource::collection($updates),
         ]);
     }
 
@@ -41,11 +52,22 @@ class PublicStatusController extends Controller
         $services = Service::forOrganization($organization->id)->get();
         $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
         $maintenances = Maintenance::forOrganization($organization->id)->latest()->take(5)->get();
+
+        // Get the IDs of the incidents for the organization
+        $incidentIds = $incidents->pluck('id');
+
+        // Fetch the latest 15 updates for those incidents
+        $updates = \App\Models\IncidentUpdate::whereIn('incident_id', $incidentIds)
+            ->latest()
+            ->take(15)
+            ->get();
+
         return response()->json([
             'organization' => $organization,
             'services' => ServiceResource::collection($services),
             'incidents' => IncidentResource::collection($incidents),
             'maintenances' => MaintenanceResource::collection($maintenances),
+            'updates' => \App\Http\Resources\IncidentUpdateResource::collection($updates),
         ]);
     }
-} 
+}

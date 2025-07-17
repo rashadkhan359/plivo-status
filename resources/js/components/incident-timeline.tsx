@@ -1,8 +1,9 @@
-import { StatusBadge } from './status-badge';
-import { Skeleton } from './ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { IncidentUpdate } from '@/types/incident-update';
 
 export function IncidentTimeline({ updates, loading, error }: {
-  updates: { id: string; message: string; status: string; created_at: string }[];
+  updates: IncidentUpdate[];
   loading?: boolean;
   error?: string | null;
 }) {

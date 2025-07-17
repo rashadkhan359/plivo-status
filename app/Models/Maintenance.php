@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\MaintenanceStatus;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -39,7 +41,7 @@ class Maintenance extends Model
     protected $casts = [
         'scheduled_start' => 'datetime',
         'scheduled_end' => 'datetime',
-        'status' => 'string',
+        'status' => MaintenanceStatus::class,
     ];
 
     /**
@@ -72,26 +74,5 @@ class Maintenance extends Model
     public function scopeForOrganization($query, $organizationId)
     {
         return $query->where('organization_id', $organizationId);
-    }
-
-    /**
-     * Get the maintenance's status.
-     *
-     * @param string $value
-     * @return string
-     */
-    public function getStatusAttribute($value)
-    {
-        return strtolower($value);
-    }
-
-    /**
-     * Set the maintenance's status.
-     *
-     * @param string $value
-     */
-    public function setStatusAttribute($value)
-    {
-        $this->attributes['status'] = strtolower($value);
     }
 } 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\ServiceStatus;
 use App\Models\Incident;
 use App\Models\Maintenance;
 
@@ -33,7 +34,7 @@ class Service extends Model
     ];
 
     protected $casts = [
-        'status' => 'string',
+        'status' => ServiceStatus::class,
     ];
 
     /**
@@ -76,26 +77,5 @@ class Service extends Model
     public function scopeForOrganization($query, $organizationId)
     {
         return $query->where('organization_id', $organizationId);
-    }
-
-    /**
-     * Get the service's status.
-     *
-     * @param string $value
-     * @return string
-     */
-    public function getStatusAttribute($value)
-    {
-        return strtolower($value);
-    }
-
-    /**
-     * Set the service's status.
-     *
-     * @param string $value
-     */
-    public function setStatusAttribute($value)
-    {
-        $this->attributes['status'] = strtolower($value);
     }
 } 

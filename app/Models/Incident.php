@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\IncidentSeverity;
+use App\Enums\IncidentStatus;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -38,8 +41,8 @@ class Incident extends Model
     ];
 
     protected $casts = [
-        'status' => 'string',
-        'severity' => 'string',
+        'status' => IncidentStatus::class,
+        'severity' => IncidentSeverity::class,
         'resolved_at' => 'datetime',
     ];
 
@@ -85,45 +88,5 @@ class Incident extends Model
         return $query->where('organization_id', $organizationId);
     }
 
-    /**
-     * Get the incident's status.
-     *
-     * @param string $value
-     * @return string
-     */
-    public function getStatusAttribute($value)
-    {
-        return strtolower($value);
-    }
 
-    /**
-     * Set the incident's status.
-     *
-     * @param string $value
-     */
-    public function setStatusAttribute($value)
-    {
-        $this->attributes['status'] = strtolower($value);
-    }
-
-    /**
-     * Get the incident's severity.
-     *
-     * @param string $value
-     * @return string
-     */
-    public function getSeverityAttribute($value)
-    {
-        return strtolower($value);
-    }
-
-    /**
-     * Set the incident's severity.
-     *
-     * @param string $value
-     */
-    public function setSeverityAttribute($value)
-    {
-        $this->attributes['severity'] = strtolower($value);
-    }
 } 

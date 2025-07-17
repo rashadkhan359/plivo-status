@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\IncidentController;
@@ -8,10 +9,15 @@ use App\Http\Controllers\IncidentUpdateController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\PublicStatusController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\Admin\OrganizationController;
+use App\Http\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
+use App\Http\Middleware\EnsureUserIsAdmin;
+
+// Homepage (landing/marketing)
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // Public status page routes (no authentication required)
 Route::get('/status/{organization:slug}', [PublicStatusController::class, 'show'])->name('status.public');
-Route::get('/status/{organization:slug}/api', [PublicStatusController::class, 'api'])->name('status.api');
 
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -24,12 +30,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('services', ServiceController::class);
         // Incidents
         Route::resource('incidents', IncidentController::class);
-        Route::post('/incidents/{incident}/updates', [IncidentUpdateController::class, 'store'])->name('incidents.updates.store');
+        Route::post('incidents/{incident}/updates', [IncidentUpdateController::class, 'store'])->name('incidents.updates.store');
         // Maintenance
-        Route::resource('maintenance', MaintenanceController::class);
+        Route::resource('maintenances', MaintenanceController::class);
         // Settings
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     });
+});
+
+
+// Admin-only routes
+Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('organizations', OrganizationController::class)->only(['index', 'show']);
+    Route::resource('maintenance', AdminMaintenanceController::class)->only(['index']);
 });
 
 // Auth routes (Breeze)

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->enum('status', ['operational', 'degraded', 'partial_outage', 'major_outage'])->default('operational');
             $table->timestamps();
+            $table->softDeletes();
             $table->index('organization_id');
         });
     }

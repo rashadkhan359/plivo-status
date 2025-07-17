@@ -3,13 +3,13 @@
 namespace App\Events;
 
 use App\Models\Incident;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class IncidentCreated implements ShouldBroadcastNow
+class IncidentCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -28,7 +28,7 @@ class IncidentCreated implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('organization.' . $this->organizationId),
-            new Channel('status.' . $this->organizationSlug),
+            new PrivateChannel('status.' . $this->organizationSlug),
         ];
     }
 

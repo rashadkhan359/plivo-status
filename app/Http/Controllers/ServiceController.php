@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ServiceStatus;
 use App\Models\Service;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -46,7 +48,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:operational,degraded,partial_outage,major_outage',
+            'status' => ['required', new Enum(ServiceStatus::class)],
         ]);
         $service = $organization->services()->create($validated);
         Broadcast::event('service.status.updated', $service);
@@ -64,7 +66,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:operational,degraded,partial_outage,major_outage',
+            'status' => ['required', new Enum(ServiceStatus::class)],
         ]);
         $service = $organization->services()->create($validated);
         Broadcast::event('service.status.updated', $service);
@@ -91,7 +93,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:operational,degraded,partial_outage,major_outage',
+            'status' => ['required', new Enum(ServiceStatus::class)],
         ]);
         $service->update($validated);
         Broadcast::event('service.status.updated', $service);
@@ -107,7 +109,7 @@ class ServiceController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'required|in:operational,degraded,partial_outage,major_outage',
+            'status' => ['required', new Enum(ServiceStatus::class)],
         ]);
         $service->update($validated);
         Broadcast::event('service.status.updated', $service);

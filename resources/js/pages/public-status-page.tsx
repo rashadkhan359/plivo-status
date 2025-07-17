@@ -1,49 +1,62 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ServiceList } from '../components/service-list';
-import { IncidentList } from '../components/incident-list';
-import { MaintenanceList } from '../components/maintenance-list';
-import { IncidentTimeline } from '../components/incident-timeline';
-import { StatusBadge } from '../components/status-badge';
-import { RealtimeIndicator } from '../components/realtime-indicator';
-import { useRealtime } from '../hooks/use-realtime';
-import { Head } from '@inertiajs/react';
+import { ServiceList } from '@/components/service-list';
+import { IncidentList } from '@/components/incident-list';
+import { MaintenanceList } from '@/components/maintenance-list';
+import { IncidentTimeline } from '@/components/incident-timeline';
+import { StatusBadge } from '@/components/status-badge';
+import { RealtimeIndicator } from '@/components/realtime-indicator';
+import { useRealtime } from '@/hooks/use-realtime';
+import { Service } from '@/types/service';
+import { Incident } from '@/types/incident';
+import { Maintenance } from '@/types/maintenance';
+import { IncidentUpdate } from '@/types/incident-update';
+import { Organization } from '@/types/organization';
+import { Head, Link } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
+import { configureEcho } from "@laravel/echo-react";
 
-function getOverallStatus(services: any[]) {
+function getOverallStatus(services: Service[]) {
   if (services.some((s) => s.status === 'major_outage')) return { status: 'major_outage', label: 'Major Outage' };
   if (services.some((s) => s.status === 'partial_outage')) return { status: 'partial_outage', label: 'Partial Outage' };
-  if (services.some((s) => s.status === 'degraded')) return { status: 'degraded', label: 'Degraded Performance' };
+  if (services.some((s) => s.status === 'degraded')) return { status: 'degraded', label: 'Degraded' };
   return { status: 'operational', label: 'All Systems Operational' };
 }
 
-export default function PublicStatusPage({ organization, services = [], incidents = [], maintenances = [], updates = [] }: {
-  organization: { name: string; slug: string };
-  services: any[];
-  incidents: any[];
-  maintenances: any[];
-  updates: any[];
+export default function PublicStatusPage({
+    organization,
+    services,
+    incidents,
+    maintenances,
+    updates = [],
+}: {
+    organization: Organization;
+    services: { data: Service[] };
+    incidents: { data: Incident[] };
+    maintenances: { data: Maintenance[] };
+    updates: IncidentUpdate[];
 }) {
-  const [serviceList, setServiceList] = useState(services);
-  const [incidentList, setIncidentList] = useState(incidents);
-  const [maintenanceList, setMaintenanceList] = useState(maintenances);
-  const [timeline, setTimeline] = useState(updates);
+    const [serviceList, setServiceList] = useState<Service[]>(services.data);
+    const [incidentList, setIncidentList] = useState<Incident[]>(incidents.data);
+    const [maintenanceList, setMaintenanceList] = useState<Maintenance[]>(maintenances.data);
+  const [timeline, setTimeline] = useState<IncidentUpdate[]>(updates);
   const { state, subscribe, unsubscribe } = useRealtime();
 
   // Real-time subscriptions
   useEffect(() => {
     if (!organization?.slug) return;
-    subscribe(`status.${organization.slug}`, 'ServiceStatusChanged', (data: any) => {
+    subscribe(`status.${organization.slug}`, 'ServiceStatusChanged', (data: { service: Service }) => {
       setServiceList((prev) => prev.map((s) => (s.id === data.service.id ? data.service : s)));
     });
-    subscribe(`status.${organization.slug}`, 'IncidentCreated', (data: any) => {
+    subscribe(`status.${organization.slug}`, 'IncidentCreated', (data: { incident: Incident }) => {
       setIncidentList((prev) => [data.incident, ...prev]);
     });
-    subscribe(`status.${organization.slug}`, 'IncidentUpdated', (data: any) => {
+    subscribe(`status.${organization.slug}`, 'IncidentUpdated', (data: { incident: Incident }) => {
       setIncidentList((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
     });
-    subscribe(`status.${organization.slug}`, 'IncidentResolved', (data: any) => {
+    subscribe(`status.${organization.slug}`, 'IncidentResolved', (data: { incident: Incident }) => {
       setIncidentList((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
     });
-    subscribe(`status.${organization.slug}`, 'MaintenanceScheduled', (data: any) => {
+    subscribe(`status.${organization.slug}`, 'MaintenanceScheduled', (data: { maintenance: Maintenance }) => {
       setMaintenanceList((prev) => [data.maintenance, ...prev]);
     });
     // Optionally subscribe to incident updates for timeline
@@ -73,6 +86,15 @@ export default function PublicStatusPage({ organization, services = [], incident
         <meta property="og:type" content="website" />
         <meta property="og:url" content={typeof window !== 'undefined' ? window.location.href : ''} />
       </Head>
+      <header className="w-full py-6 px-4 flex items-center justify-between max-w-6xl mx-auto">
+        <div className="flex items-center gap-2 text-xl font-bold">
+          <span className="text-primary">StatusPage</span>
+        </div>
+        <div className="flex gap-2">
+          <Link href={route('login')}><Button variant="outline">Login</Button></Link>
+          <Link href={route('register')}><Button>Get Started</Button></Link>
+        </div>
+      </header>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
           <StatusBadge status={overall.status} />
@@ -90,7 +112,7 @@ export default function PublicStatusPage({ organization, services = [], incident
       </div>
       <div>
         <h2 className="text-lg font-semibold mb-2">Scheduled Maintenance</h2>
-        <MaintenanceList initialMaintenances={maintenanceList} />
+        <MaintenanceList maintenances={{ data: maintenanceList }} />
       </div>
       <div>
         <h2 className="text-lg font-semibold mb-2">Incident History</h2>

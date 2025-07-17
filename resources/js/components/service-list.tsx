@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ServiceCard } from './service-card';
-import { Skeleton } from './ui/skeleton';
-import { useRealtime } from '../hooks/use-realtime';
-import { RealtimeIndicator } from './realtime-indicator';
+import { ServiceCard } from '@/components/service-card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useRealtime } from '@/hooks/use-realtime';
+import { RealtimeIndicator } from '@/components/realtime-indicator';
+import { Service } from '@/types/service';
 
-export function ServiceList({ initialServices, orgId, orgSlug }: { initialServices: any[]; orgId?: string; orgSlug?: string }) {
-  const [services, setServices] = useState(initialServices);
+export function ServiceList({ initialServices, orgId, orgSlug }: { initialServices: Service[]; orgId?: string; orgSlug?: string }) {
+  const [services, setServices] = useState<Service[]>(initialServices);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { state, subscribe, unsubscribe } = useRealtime();
 
   useEffect(() => {
     if (!orgId || !orgSlug) return;
-    const handleStatusChanged = (data: any) => {
+    const handleStatusChanged = (data: { service: Service }) => {
       setServices((prev) => prev.map((s) => (s.id === data.service.id ? data.service : s)));
     };
     subscribe(`organization.${orgId}`, 'ServiceStatusChanged', handleStatusChanged);

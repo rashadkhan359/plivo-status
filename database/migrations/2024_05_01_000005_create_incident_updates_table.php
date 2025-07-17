@@ -14,6 +14,7 @@ return new class extends Migration
             $table->text('message');
             $table->enum('status', ['investigating', 'identified', 'monitoring', 'resolved'])->default('investigating');
             $table->timestamps();
+            $table->softDeletes();
             $table->index('incident_id');
         });
     }

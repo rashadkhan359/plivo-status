@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Http\Resources\OrganizationResource;
 
 class MaintenanceResource extends JsonResource
 {
@@ -24,7 +25,8 @@ class MaintenanceResource extends JsonResource
             'scheduled_end' => $this->scheduled_end,
             'status' => $this->status,
             'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+                        'updated_at' => $this->updated_at,
+            'organization' => new OrganizationResource($this->whenLoaded('organization')),
         ];
     }
 } 

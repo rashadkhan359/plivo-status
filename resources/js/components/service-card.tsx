@@ -1,7 +1,8 @@
-import { Card } from './ui/card';
-import { StatusBadge } from './status-badge';
+import { Card } from '@/components/ui/card';
+import { StatusBadge } from '@/components/status-badge';
+import { Service } from '@/types/service';
 
-export function ServiceCard({ service }: { service: { name: string; description?: string; status: string } }) {
+export function ServiceCard({ service }: { service: Service }) {
   return (
     <Card className="flex flex-col gap-2 p-4 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
       <div className="flex items-center justify-between">

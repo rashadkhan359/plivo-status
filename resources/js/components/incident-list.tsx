@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { StatusBadge } from './status-badge';
-import { Skeleton } from './ui/skeleton';
+import { StatusBadge } from '@/components/status-badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Incident } from '@/types/incident';
 
-export function IncidentList({ initialIncidents }: { initialIncidents: any[] }) {
-  const [incidents, setIncidents] = useState(initialIncidents);
+export function IncidentList({ initialIncidents }: { initialIncidents: Incident[] }) {
+  const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
