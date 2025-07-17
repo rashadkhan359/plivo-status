@@ -13,7 +13,7 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { props } = usePage();
+    const { props } = usePage<SharedData>();
     const { currentRole, currentPermissions } = props.auth;
     
     // Build navigation items based on permissions

@@ -20,19 +20,11 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $user = Auth::user();
-        $organization = App::instance('current_organization');
-        
-        if (!$organization) {
-            // Fallback to legacy organization for backward compatibility
-            $organization = $user->organization;
-            if (!$organization) {
-                abort(403, 'You do not have access to any organization.');
-            }
-        }
+        $organization = $this->getCurrentOrganization();
 
         $services = Service::forOrganization($organization->id)->with('incidents')->get();
         $incidents = Incident::forOrganization($organization->id)->with('services')->latest()->take(10)->get();
-        $maintenances = Maintenance::forOrganization($organization->id)->with('services')->latest()->take(5)->get();
+        $maintenances = Maintenance::forOrganization($organization->id)->with('service')->latest()->take(5)->get();
 
         return Inertia::render('dashboard', [
             'services' => \App\Http\Resources\ServiceResource::collection($services),
@@ -56,14 +48,7 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
         
-        $organization = App::instance('current_organization');
-        if (!$organization) {
-            // Fallback to legacy organization for backward compatibility
-            $organization = $user->organization;
-            if (!$organization) {
-                return response()->json(['message' => 'No organization found'], 404);
-            }
-        }
+        $organization = $this->getCurrentOrganization();
         
         return response()->json([
             'services' => Service::forOrganization($organization->id)->count(),

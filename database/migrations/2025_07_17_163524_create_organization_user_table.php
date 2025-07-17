@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->enum('role', ['owner', 'admin', 'member', 'team_lead'])->default('member');
             $table->json('permissions')->nullable(); // Granular permissions
+            $table->boolean('is_active')->default(true); // Whether the user is active in this organization
             $table->foreignId('invited_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('joined_at')->nullable();
             $table->timestamps();

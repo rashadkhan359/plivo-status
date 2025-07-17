@@ -27,7 +27,7 @@ class IncidentController extends Controller
     {
         $this->authorize('viewAny', Incident::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get incidents accessible to the user
@@ -46,7 +46,7 @@ class IncidentController extends Controller
     {
         $this->authorize('create', Incident::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get services accessible to the user
@@ -76,7 +76,7 @@ class IncidentController extends Controller
     {
         $this->authorize('create', Incident::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         $validated = $request->validate([
@@ -142,7 +142,7 @@ class IncidentController extends Controller
     {
         $this->authorize('update', $incident);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get services accessible to the user
@@ -161,7 +161,7 @@ class IncidentController extends Controller
     {
         $this->authorize('update', $incident);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         
         $validated = $request->validate([
             'service_ids' => 'required|array|min:1',

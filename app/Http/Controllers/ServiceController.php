@@ -26,7 +26,7 @@ class ServiceController extends Controller
     {
         $this->authorize('viewAny', Service::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get services based on user's role and team memberships
@@ -48,7 +48,7 @@ class ServiceController extends Controller
     {
         $this->authorize('create', Service::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $teams = $organization->teams()->get();
         
         return Inertia::render('services/create', [
@@ -63,7 +63,7 @@ class ServiceController extends Controller
     {
         $this->authorize('create', Service::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         $validated = $request->validate([
@@ -100,7 +100,7 @@ class ServiceController extends Controller
     {
         $this->authorize('update', $service);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $teams = $organization->teams()->get();
         
         return Inertia::render('services/edit', [
@@ -116,7 +116,7 @@ class ServiceController extends Controller
     {
         $this->authorize('update', $service);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',

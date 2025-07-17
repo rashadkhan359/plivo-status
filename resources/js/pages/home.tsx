@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import Image  from '../../images/logo.png';
 import { useState } from 'react';
 
 export default function Home() {
@@ -38,7 +39,7 @@ export default function Home() {
               <Link href={route('status.public', { organization: 'demo-org' })}><Button>View Demo Status Page</Button></Link>
             </div>
             <div className="flex-1">
-              <img src="/status-demo.png" alt="Status Page Demo" className="rounded-lg shadow-md w-full" />
+              <img src={Image} alt="Status Page Demo" className="rounded-lg shadow-md w-full" />
             </div>
           </div>
         </section>

@@ -56,6 +56,7 @@ export interface SharedData {
         route: string;
     };
     sidebarOpen: boolean;
+    [key: string]: any;
 }
 
 export interface User {

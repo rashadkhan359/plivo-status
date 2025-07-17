@@ -23,11 +23,10 @@ Route::get('/status/{organization:slug}', [PublicStatusController::class, 'show'
 
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Organization context routes
+    // Organization context routes (including dashboard)
     Route::middleware(['organization.context'])->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         // Services
         Route::resource('services', ServiceController::class);
         

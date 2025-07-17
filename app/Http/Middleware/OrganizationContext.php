@@ -27,8 +27,7 @@ class OrganizationContext
         $organization = $this->getCurrentOrganization($user, $request);
         
         if (!$organization) {
-            // User has no organization access
-            abort(403, 'You do not have access to any organization.');
+            return $this->handleNoOrganizationAccess($request, $user);
         }
 
         // Set organization context globally
@@ -52,10 +51,11 @@ class OrganizationContext
             // Verify user has access to this specific organization
             $organization = $user->organizations()
                 ->where('organizations.id', $organizationId)
+                ->wherePivot('is_active', true)
                 ->first();
                 
             if (!$organization) {
-                abort(403, 'You do not have access to this organization.');
+                return null;
             }
             
             return $organization;
@@ -63,11 +63,56 @@ class OrganizationContext
 
         // For backward compatibility, check if user has organization_id
         if ($user->organization_id) {
-            return Organization::find($user->organization_id);
+            $organization = Organization::find($user->organization_id);
+            if ($organization) {
+                return $organization;
+            }
         }
 
-        // Get user's primary organization (first one they're a member of)
-        return $user->organizations()->first();
+        // Get user's primary active organization
+        return $user->organizations()
+            ->wherePivot('is_active', true)
+            ->orderBy('organization_user.created_at')
+            ->first();
+    }
+
+    /**
+     * Handle cases where user has no organization access
+     */
+    protected function handleNoOrganizationAccess(Request $request, $user)
+    {
+        // Check if user has any organizations (even inactive ones)
+        $hasAnyOrganizations = $user->organizations()->exists();
+        
+        if ($hasAnyOrganizations) {
+            // User has organizations but none are active
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your account has been deactivated. Please contact your organization administrator.',
+                    'code' => 'ACCOUNT_DEACTIVATED'
+                ], 403);
+            }
+            
+            // For web requests, redirect to a helpful page
+            Auth::logout();
+            return redirect()->route('login')->withErrors([
+                'email' => 'Your account has been deactivated. Please contact your organization administrator for access.',
+            ]);
+        } else {
+            // User has no organizations at all
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'You are not associated with any organization. Please contact support.',
+                    'code' => 'NO_ORGANIZATION'
+                ], 403);
+            }
+            
+            // For web requests, redirect to a helpful page
+            Auth::logout();
+            return redirect()->route('login')->withErrors([
+                'email' => 'Your account is not associated with any organization. Please contact support.',
+            ]);
+        }
     }
 
     /**
@@ -88,7 +133,7 @@ class OrganizationContext
             
         if ($userOrganization) {
             $role = $userOrganization->pivot->role;
-            $permissions = $userOrganization->pivot->permissions ?? [];
+            $permissions = json_decode($userOrganization->pivot->permissions ?? '[]', true);
             
             // Share user's role and permissions
             View::share('currentRole', $role);

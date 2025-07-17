@@ -24,7 +24,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('viewAny', Maintenance::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get maintenances accessible to the user
@@ -43,7 +43,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('create', Maintenance::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get services accessible to the user
@@ -61,7 +61,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('create', Maintenance::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         $validated = $request->validate([
@@ -97,7 +97,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('update', $maintenance);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         $user = Auth::user();
         
         // Get services accessible to the user
@@ -116,7 +116,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('update', $maintenance);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
         
         $validated = $request->validate([
             'service_id' => 'nullable|exists:services,id',

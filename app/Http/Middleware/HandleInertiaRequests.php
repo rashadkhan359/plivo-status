@@ -41,7 +41,15 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         $user = $request->user();
-        $currentOrganization = App::instance('current_organization');
+        
+        // Try to get current organization from container (set by OrganizationContext middleware)
+        $currentOrganization = null;
+        try {
+            $currentOrganization = App::make('current_organization');
+        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+            // Organization context not set (guest user or middleware not run)
+            $currentOrganization = null;
+        }
         
         // Get user's role and permissions in current organization
         $currentRole = null;
