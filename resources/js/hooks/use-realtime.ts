@@ -173,13 +173,16 @@ export function useRealtime() {
         hasStopListening: typeof channelInstance.stopListening === 'function',
       });
       
-      channelInstance.listen(event, (data: any) => {
-        console.log(`Event received on ${channel}.${event}:`, data);
+      // Add dot prefix to event name for proper Laravel Echo handling
+      const eventName = event.startsWith('.') ? event : `.${event}`;
+      
+      channelInstance.listen(eventName, (data: any) => {
+        console.log(`Event received on ${channel}.${eventName}:`, data);
         callback(data);
       });
       
       // Log successful subscription
-      console.log('Successfully subscribed to:', channel, event);
+      console.log('Successfully subscribed to:', channel, eventName);
       
       // Also log the channel state for debugging
       if (channelInstance.subscribed) {
@@ -199,7 +202,9 @@ export function useRealtime() {
     if (!echoRef.current) return;
     try {
       console.log('Unsubscribing from:', channel, event);
-      echoRef.current.channel(channel).stopListening(event);
+      // Add dot prefix to event name for proper Laravel Echo handling
+      const eventName = event.startsWith('.') ? event : `.${event}`;
+      echoRef.current.channel(channel).stopListening(eventName);
     } catch (error) {
       console.warn('Echo unsubscription error:', error);
     }

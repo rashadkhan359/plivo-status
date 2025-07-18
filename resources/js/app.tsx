@@ -41,7 +41,7 @@ if (import.meta.env.DEV) {
     });
 }
 
-// Make Echo available globally for useRealtime hook
+// Make Echo available globally for useRealtime hook and direct usage
 // @ts-ignore
 window.Echo = echo;
 
@@ -53,6 +53,15 @@ setTimeout(() => {
             hasPusher: !!(window.Echo?.connector as any)?.pusher,
             pusherState: (window.Echo?.connector as any)?.pusher?.connection?.state,
         });
+        
+        // Test channel creation
+        if (window.Echo) {
+            const testChannel = window.Echo.channel('test');
+            console.log('Test channel created:', {
+                name: testChannel.name,
+                subscribed: testChannel.subscribed,
+            });
+        }
     }
 }, 100);
 

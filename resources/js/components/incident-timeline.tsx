@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { IncidentUpdate } from '@/types/incident-update';
-import { useRealtime } from '@/hooks/use-realtime';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { cn } from '@/lib/utils';
@@ -41,42 +40,6 @@ export function IncidentTimeline({
   const [updates, setUpdates] = useState<IncidentUpdate[]>(initialUpdates);
   console.log('IncidentTimeline: initialUpdates:', initialUpdates);
   console.log('IncidentTimeline: updates:', updates.length);
-  const { subscribe, unsubscribe } = useRealtime();
-  const { props } = usePage<SharedData>();
-  const organization = props.auth?.currentOrganization;
-
-  // Use provided orgId/orgSlug or fall back to current organization
-  const effectiveOrgId = orgId || organization?.id?.toString();
-  const effectiveOrgSlug = orgSlug || organization?.slug;
-
-  // Real-time subscription for incident updates
-  useEffect(() => {
-    if (!enableRealtime || !effectiveOrgId || !effectiveOrgSlug) return;
-
-    const handleIncidentUpdateCreated = (data: { incident_update: any }) => {
-      console.log('IncidentTimeline: IncidentUpdateCreated received:', data);
-
-      // Transform the event data to match the frontend format
-      const newUpdate: IncidentUpdate = {
-        id: data.incident_update.id,
-        message: data.incident_update.description || data.incident_update.message,
-        status: data.incident_update.status,
-        created_at: data.incident_update.created_at,
-      };
-
-      console.log('IncidentTimeline: Adding new update:', newUpdate);
-      setUpdates((prev) => [newUpdate, ...prev]);
-    };
-
-    // Subscribe to both public and private channels
-    subscribe(`organization.${effectiveOrgId}`, 'IncidentUpdateCreated', handleIncidentUpdateCreated);
-    subscribe(`status.${effectiveOrgSlug}`, 'IncidentUpdateCreated', handleIncidentUpdateCreated);
-
-    return () => {
-      unsubscribe(`organization.${effectiveOrgId}`, 'IncidentUpdateCreated');
-      unsubscribe(`status.${effectiveOrgSlug}`, 'IncidentUpdateCreated');
-    };
-  }, [enableRealtime, effectiveOrgId, effectiveOrgSlug, subscribe, unsubscribe]);
 
   // Update local state when props change
   useEffect(() => {
@@ -105,26 +68,6 @@ export function IncidentTimeline({
       </div>
     );
   }
-
-  // if (!compact) {
-  //   // Compact version for public status page
-  //   console.log('IncidentTimeline: compact:', compact);
-  //   return (
-  //     <ol className="relative border-l border-muted-foreground/20 space-y-4">
-  //       {updates.map((update, i) => (
-  //         <li key={update.id} className="ml-4">
-  //           <div className="absolute -left-2.5 w-5 h-5 bg-background border-2 border-muted-foreground/20 rounded-full flex items-center justify-center">
-  //             <StatusBadge status={update.status} className="text-xs px-1 py-0.5" />
-  //           </div>
-  //           <div className="pl-8">
-  //             <div className="font-medium text-sm mb-1">{update.message}</div>
-  //             <div className="text-xs text-muted-foreground">{new Date(update.created_at).toLocaleString()}</div>
-  //           </div>
-  //         </li>
-  //       ))}
-  //     </ol>
-  //   );
-  // }
 
   // Full version with icons and rich styling
   return (

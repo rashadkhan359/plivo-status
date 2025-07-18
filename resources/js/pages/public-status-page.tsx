@@ -85,33 +85,62 @@ export default function PublicStatusPage({
     const channelName = `status.${organization.slug}`;
     console.log('Using channel name:', channelName);
     
-    // Test the subscription with a simple callback first
-    const testCallback = (data: any) => {
-      console.log('Test event received:', data);
-    };
+    // Use direct Echo approach for better reliability
+    if (!window.Echo) {
+      console.error('Echo not available');
+      return;
+    }
     
-    subscribe(channelName, 'ServiceStatusChanged', (data: { service: Service }) => {
+    const channel = window.Echo.channel(channelName);
+    
+    // Subscribe to events with dot prefix
+    channel.listen('.ServiceStatusChanged', (data: { service: Service }) => {
       console.log('ServiceStatusChanged received:', data);
-      setServiceList((prev) => prev.map((s) => (s.id === data.service.id ? data.service : s)));
+      setServiceList((prev) => {
+        const updated = prev.map((s) => (s.id === data.service.id ? data.service : s));
+        console.log('Updated service list:', updated);
+        return updated;
+      });
     });
-    subscribe(channelName, 'IncidentCreated', (data: { incident: Incident }) => {
+    
+    channel.listen('.IncidentCreated', (data: { incident: Incident }) => {
       console.log('IncidentCreated received:', data);
-      setIncidentList((prev) => [data.incident, ...prev]);
+      setIncidentList((prev) => {
+        const updated = [data.incident, ...prev];
+        console.log('Updated incident list:', updated);
+        return updated;
+      });
     });
-    subscribe(channelName, 'IncidentUpdated', (data: { incident: Incident }) => {
+    
+    channel.listen('.IncidentUpdated', (data: { incident: Incident }) => {
       console.log('IncidentUpdated received:', data);
       console.log('Current incident list:', incidentList);
-      setIncidentList((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
+      setIncidentList((prev) => {
+        const updated = prev.map((i) => (i.id === data.incident.id ? data.incident : i));
+        console.log('Updated incident list:', updated);
+        return updated;
+      });
     });
-    subscribe(channelName, 'IncidentResolved', (data: { incident: Incident }) => {
+    
+    channel.listen('.IncidentResolved', (data: { incident: Incident }) => {
       console.log('IncidentResolved received:', data);
-      setIncidentList((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
+      setIncidentList((prev) => {
+        const updated = prev.map((i) => (i.id === data.incident.id ? data.incident : i));
+        console.log('Updated incident list:', updated);
+        return updated;
+      });
     });
-    subscribe(channelName, 'MaintenanceScheduled', (data: { maintenance: Maintenance }) => {
+    
+    channel.listen('.MaintenanceScheduled', (data: { maintenance: Maintenance }) => {
       console.log('MaintenanceScheduled received:', data);
-      setMaintenanceList((prev) => [data.maintenance, ...prev]);
+      setMaintenanceList((prev) => {
+        const updated = [data.maintenance, ...prev];
+        console.log('Updated maintenance list:', updated);
+        return updated;
+      });
     });
-    subscribe(channelName, 'IncidentUpdateCreated', (data: { incident_update: any }) => {
+    
+    channel.listen('.IncidentUpdateCreated', (data: { incident_update: any }) => {
       console.log('IncidentUpdateCreated received on public page:', data);
       // Transform and add the new update to the timeline
       const newUpdate: IncidentUpdate = {
@@ -120,23 +149,45 @@ export default function PublicStatusPage({
         status: data.incident_update.status,
         created_at: data.incident_update.created_at,
       };
-      setTimeline((prev) => [newUpdate, ...prev]);
+      setTimeline((prev) => {
+        const updated = [newUpdate, ...prev];
+        console.log('Updated timeline:', updated);
+        return updated;
+      });
     });
     
     console.log('All subscriptions set up for channel:', channelName);
     
     return () => {
       console.log('Cleaning up realtime subscriptions for:', organization.slug);
-      unsubscribe(channelName, 'ServiceStatusChanged');
-      unsubscribe(channelName, 'IncidentCreated');
-      unsubscribe(channelName, 'IncidentUpdated');
-      unsubscribe(channelName, 'IncidentResolved');
-      unsubscribe(channelName, 'MaintenanceScheduled');
-      unsubscribe(channelName, 'IncidentUpdateCreated');
+      // Clean up subscriptions
+      channel.stopListening('.ServiceStatusChanged');
+      channel.stopListening('.IncidentCreated');
+      channel.stopListening('.IncidentUpdated');
+      channel.stopListening('.IncidentResolved');
+      channel.stopListening('.MaintenanceScheduled');
+      channel.stopListening('.IncidentUpdateCreated');
     };
-  }, [organization?.slug, state, subscribe, unsubscribe]);
+  }, [organization?.slug, state]);
 
   const overall = useMemo(() => getOverallStatus(serviceList), [serviceList]);
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('ServiceList state updated:', serviceList.length, 'services');
+  }, [serviceList]);
+
+  useEffect(() => {
+    console.log('IncidentList state updated:', incidentList.length, 'incidents');
+  }, [incidentList]);
+
+  useEffect(() => {
+    console.log('MaintenanceList state updated:', maintenanceList.length, 'maintenances');
+  }, [maintenanceList]);
+
+  useEffect(() => {
+    console.log('Timeline state updated:', timeline.length, 'updates');
+  }, [timeline]);
 
   // SEO meta tags
   const title = `${organization.name} Status`;

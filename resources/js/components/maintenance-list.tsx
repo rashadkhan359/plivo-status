@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Calendar, CheckCircle, Loader } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useRealtime } from '@/hooks/use-realtime';
 
 type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed';
 
@@ -32,26 +31,11 @@ const statusConfig: Record<MaintenanceStatus, { icon: React.ElementType; color: 
 
 export function MaintenanceList({ maintenances, loading, error, orgId, orgSlug }: MaintenanceListProps) {
     const [maintenanceList, setMaintenanceList] = useState<Maintenance[]>(maintenances.data);
-    const { state, subscribe, unsubscribe } = useRealtime();
 
-    // Real-time subscriptions
+    // Sync with prop changes
     useEffect(() => {
-        if (!orgId || !orgSlug) return;
-        
-        const handleMaintenanceScheduled = (data: { maintenance: Maintenance }) => {
-            console.log('MaintenanceScheduled received:', data);
-            setMaintenanceList((prev) => [data.maintenance, ...prev]);
-        };
-
-        // Subscribe to both public and private channels
-        subscribe(`organization.${orgId}`, 'MaintenanceScheduled', handleMaintenanceScheduled);
-        subscribe(`status.${orgSlug}`, 'MaintenanceScheduled', handleMaintenanceScheduled);
-
-        return () => {
-            unsubscribe(`organization.${orgId}`, 'MaintenanceScheduled');
-            unsubscribe(`status.${orgSlug}`, 'MaintenanceScheduled');
-        };
-    }, [orgId, orgSlug, subscribe, unsubscribe]);
+        setMaintenanceList(maintenances.data);
+    }, [maintenances.data]);
 
     console.log(`maintenances`, maintenances);
     if (loading) {

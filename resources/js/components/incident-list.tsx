@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Incident } from '@/types/incident';
-import { useRealtime } from '@/hooks/use-realtime';
 
 export function IncidentList({ 
   initialIncidents, 
@@ -16,46 +15,11 @@ export function IncidentList({
   const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { state, subscribe, unsubscribe } = useRealtime();
 
-  // Real-time subscriptions
+  // Sync with prop changes
   useEffect(() => {
-    if (!orgId || !orgSlug) return;
-    
-    const handleIncidentCreated = (data: { incident: Incident }) => {
-      console.log('IncidentCreated received:', data);
-      setIncidents((prev) => [data.incident, ...prev]);
-    };
-    
-    const handleIncidentUpdated = (data: { incident: Incident }) => {
-      console.log('IncidentUpdated received:', data);
-      setIncidents((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
-    };
-    
-    const handleIncidentResolved = (data: { incident: Incident }) => {
-      console.log('IncidentResolved received:', data);
-      setIncidents((prev) => prev.map((i) => (i.id === data.incident.id ? data.incident : i)));
-    };
-
-    // Subscribe to both public and private channels
-    subscribe(`organization.${orgId}`, 'IncidentCreated', handleIncidentCreated);
-    subscribe(`organization.${orgId}`, 'IncidentUpdated', handleIncidentUpdated);
-    subscribe(`organization.${orgId}`, 'IncidentResolved', handleIncidentResolved);
-    
-    // Also subscribe to public channels for redundancy
-    subscribe(`status.${orgSlug}`, 'IncidentCreated', handleIncidentCreated);
-    subscribe(`status.${orgSlug}`, 'IncidentUpdated', handleIncidentUpdated);
-    subscribe(`status.${orgSlug}`, 'IncidentResolved', handleIncidentResolved);
-
-    return () => {
-      unsubscribe(`organization.${orgId}`, 'IncidentCreated');
-      unsubscribe(`organization.${orgId}`, 'IncidentUpdated');
-      unsubscribe(`organization.${orgId}`, 'IncidentResolved');
-      unsubscribe(`status.${orgSlug}`, 'IncidentCreated');
-      unsubscribe(`status.${orgSlug}`, 'IncidentUpdated');
-      unsubscribe(`status.${orgSlug}`, 'IncidentResolved');
-    };
-  }, [orgId, orgSlug, subscribe, unsubscribe]);
+    setIncidents(initialIncidents);
+  }, [initialIncidents]);
 
   if (loading) {
     return (
