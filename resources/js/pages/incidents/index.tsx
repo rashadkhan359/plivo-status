@@ -8,6 +8,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { AlertTriangle, CheckCircle, Info, ShieldAlert, Zap, Edit, Trash2, MessageSquare, Clock, Plus, Users, User } from 'lucide-react';
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
     incidents: {
@@ -31,6 +32,7 @@ const severityColors = {
 };
 
 export default function IncidentIndex({ incidents, canCreate }: PageProps<Props>) {
+    useToast(); // Initialize toast notifications
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [incidentToDelete, setIncidentToDelete] = React.useState<Incident | null>(null);
     const [deleting, setDeleting] = React.useState(false);

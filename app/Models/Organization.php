@@ -143,6 +143,14 @@ class Organization extends Model
     }
 
     /**
+     * Get the invitations for the organization.
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(Invitation::class);
+    }
+
+    /**
      * Check if a user belongs to this organization.
      */
     public function hasUser(User $user): bool

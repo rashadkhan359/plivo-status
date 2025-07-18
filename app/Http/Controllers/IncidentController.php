@@ -89,17 +89,10 @@ class IncidentController extends Controller
         ]);
         
         // Validate services belong to organization
-        $serviceIds = $validated['service_ids'];
-        $validServices = $organization->services()
-            ->whereIn('id', $serviceIds)
-            ->pluck('id')
-            ->toArray();
-            
-        if (count($validServices) !== count($serviceIds)) {
-            return back()->withErrors(['service_ids' => 'Some selected services are invalid.']);
-        }
+        $this->validateServicesBelongToOrganization($validated['service_ids']);
         
         $incident = $organization->incidents()->create([
+            'service_id' => $validated['service_ids'][0], // Use first service as primary
             'title' => $validated['title'],
             'description' => $validated['description'],
             'status' => $validated['status'],
@@ -108,11 +101,11 @@ class IncidentController extends Controller
         ]);
         
         // Attach services to incident
-        $incident->services()->attach($serviceIds);
+        $incident->services()->attach($validated['service_ids']);
         
         event(new IncidentCreated($incident));
         
-        return redirect()->route('incidents.index')->with('success', 'Incident created.');
+        return redirect()->route('incidents.index')->with('success', 'Incident created successfully.');
     }
 
     /**
@@ -130,7 +123,10 @@ class IncidentController extends Controller
             'status' => ['required', new Enum(IncidentStatus::class)],
             'severity' => ['required', new Enum(IncidentSeverity::class)],
         ]);
-        $incident = $organization->incidents()->create($validated);
+        $incident = $organization->incidents()->create([
+            ...$validated,
+            'created_by' => $user->id,
+        ]);
         event(new IncidentCreated($incident));
         return new IncidentResource($incident);
     }
@@ -162,6 +158,7 @@ class IncidentController extends Controller
         $this->authorize('update', $incident);
         
         $organization = $this->getCurrentOrganization();
+        $user = Auth::user();
         
         $validated = $request->validate([
             'service_ids' => 'required|array|min:1',
@@ -173,15 +170,10 @@ class IncidentController extends Controller
         ]);
         
         // Validate services belong to organization
-        $serviceIds = $validated['service_ids'];
-        $validServices = $organization->services()
-            ->whereIn('id', $serviceIds)
-            ->pluck('id')
-            ->toArray();
-            
-        if (count($validServices) !== count($serviceIds)) {
-            return back()->withErrors(['service_ids' => 'Some selected services are invalid.']);
-        }
+        $this->validateServicesBelongToOrganization($validated['service_ids']);
+        
+        // Check if user has permission to change services
+        $canChangeServices = in_array($user->role, ['owner', 'admin']);
         
         $wasResolved = $incident->status === IncidentStatus::RESOLVED;
         
@@ -192,8 +184,12 @@ class IncidentController extends Controller
             'severity' => $validated['severity'],
         ]);
         
-        // Update service relationships
-        $incident->services()->sync($serviceIds);
+        // Only update service relationships if user has permission
+        if ($canChangeServices) {
+            $incident->services()->sync($validated['service_ids']);
+            // Update primary service_id for backward compatibility
+            $incident->update(['service_id' => $validated['service_ids'][0]]);
+        }
         
         // Check if incident was resolved
         if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED) {
@@ -203,7 +199,7 @@ class IncidentController extends Controller
             event(new IncidentUpdated($incident));
         }
         
-        return redirect()->route('incidents.index')->with('success', 'Incident updated.');
+        return redirect()->route('incidents.index')->with('success', 'Incident updated successfully.');
     }
 
     /**
@@ -231,7 +227,7 @@ class IncidentController extends Controller
     {
         $this->authorize('delete', $incident);
         $incident->delete();
-        return redirect()->route('incidents.index')->with('success', 'Incident deleted.');
+        return redirect()->route('incidents.index')->with('success', 'Incident deleted successfully.');
     }
 
     /**
@@ -245,11 +241,11 @@ class IncidentController extends Controller
     }
 
     /**
-     * Resolve the specified incident.
+     * Resolve an incident.
      */
     public function resolve(Incident $incident)
     {
-        $this->authorize('resolve', $incident);
+        $this->authorize('update', $incident);
         
         $incident->update([
             'status' => IncidentStatus::RESOLVED,
@@ -259,7 +255,7 @@ class IncidentController extends Controller
         
         event(new IncidentResolved($incident));
         
-        return redirect()->route('incidents.index')->with('success', 'Incident resolved.');
+        return back()->with('success', 'Incident resolved successfully.');
     }
 
     /**
@@ -270,7 +266,7 @@ class IncidentController extends Controller
         $query = $organization->incidents()->with(['services', 'creator', 'resolver']);
         
         // If user is not admin/owner, filter by their team's services
-        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+        if (!in_array($user->role, ['owner', 'admin'])) {
             $userTeamIds = $user->teams()->pluck('teams.id');
             
             // Get service IDs for user's teams
@@ -295,7 +291,7 @@ class IncidentController extends Controller
         $query = $organization->services()->with(['team']);
         
         // If user is not admin/owner, filter by visibility and team membership
-        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+        if (!in_array($user->role, ['owner', 'admin'])) {
             $userTeamIds = $user->teams()->pluck('teams.id');
             
             $query->where(function ($q) use ($userTeamIds) {

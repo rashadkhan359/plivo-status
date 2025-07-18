@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Select } from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 
 const STATUS_OPTIONS = [
@@ -11,8 +11,20 @@ const STATUS_OPTIONS = [
   { value: 'major_outage', label: 'Major Outage' },
 ];
 
+const VISIBILITY_OPTIONS = [
+  { value: 'public', label: 'Public' },
+  { value: 'private', label: 'Private' },
+];
+
 export function ServiceForm({ initialValues = {}, onSubmit, loading: loadingProp }: {
-  initialValues?: { name?: string; description?: string; status?: string };
+  initialValues?: { 
+    name?: string; 
+    description?: string; 
+    status?: string; 
+    visibility?: string;
+    team_id?: string;
+    order?: number;
+  };
   onSubmit: (values: any) => void;
   loading?: boolean;
 }) {
@@ -20,6 +32,9 @@ export function ServiceForm({ initialValues = {}, onSubmit, loading: loadingProp
     name: initialValues.name || '',
     description: initialValues.description || '',
     status: initialValues.status || 'operational',
+    visibility: initialValues.visibility || 'public',
+    team_id: initialValues.team_id || 'none',
+    order: initialValues.order || 0,
   });
   const [errors, setErrors] = useState<any>({});
   const [loading, setLoading] = useState(false);
@@ -74,17 +89,44 @@ export function ServiceForm({ initialValues = {}, onSubmit, loading: loadingProp
       </div>
       <div>
         <Label htmlFor="status">Status</Label>
-        <Select
-          value={values.status}
-          onValueChange={handleStatusChange}
-          disabled={loading || loadingProp}
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <Select.Item key={opt.value} value={opt.value}>
-              {opt.label}
-            </Select.Item>
-          ))}
+        <Select value={values.status} onValueChange={handleStatusChange} disabled={loading || loadingProp}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
+      </div>
+      <div>
+        <Label htmlFor="visibility">Visibility</Label>
+        <Select value={values.visibility} onValueChange={(value) => setValues(v => ({ ...v, visibility: value }))} disabled={loading || loadingProp}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select visibility" />
+          </SelectTrigger>
+          <SelectContent>
+            {VISIBILITY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label htmlFor="order">Display Order</Label>
+        <Input
+          id="order"
+          name="order"
+          type="number"
+          value={values.order}
+          onChange={(e) => setValues(v => ({ ...v, order: parseInt(e.target.value) || 0 }))}
+          disabled={loading || loadingProp}
+        />
       </div>
       {errors.form && <div className="text-red-500 text-xs mt-1">{errors.form}</div>}
       <Button type="submit" disabled={loading || loadingProp} className="w-full">

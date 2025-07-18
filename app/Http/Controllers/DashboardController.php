@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\App;
 use App\Models\Organization;
 use App\Models\Service;
 use App\Models\Incident;
+use App\Models\IncidentUpdate;
 use App\Models\Maintenance;
 
 class DashboardController extends Controller
@@ -23,12 +24,18 @@ class DashboardController extends Controller
         $organization = $this->getCurrentOrganization();
 
         $services = Service::forOrganization($organization->id)->with('incidents')->get();
-        $incidents = Incident::forOrganization($organization->id)->with('services')->latest()->take(10)->get();
+        $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
+        $incidentIds = $incidents->pluck('id');
+        $incidentUpdates = IncidentUpdate::whereIn('incident_id', $incidentIds)
+            ->latest()
+            ->take(15)
+            ->get();
         $maintenances = Maintenance::forOrganization($organization->id)->with('service')->latest()->take(5)->get();
 
         return Inertia::render('dashboard', [
             'services' => \App\Http\Resources\ServiceResource::collection($services),
             'incidents' => \App\Http\Resources\IncidentResource::collection($incidents),
+            'incidentUpdates' => \App\Http\Resources\IncidentUpdateResource::collection($incidentUpdates),
             'maintenances' => \App\Http\Resources\MaintenanceResource::collection($maintenances),
             'stats' => [
                 'servicesCount' => $services->count(),
@@ -47,13 +54,13 @@ class DashboardController extends Controller
         if (!$user) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
-        
+
         $organization = $this->getCurrentOrganization();
-        
+
         return response()->json([
             'services' => Service::forOrganization($organization->id)->count(),
             'incidents' => Incident::forOrganization($organization->id)->count(),
             'maintenances' => Maintenance::forOrganization($organization->id)->count(),
         ]);
     }
-} 
+}

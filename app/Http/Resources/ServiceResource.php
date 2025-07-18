@@ -20,6 +20,11 @@ class ServiceResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'status' => $this->status,
+            'team_id' => $this->team_id,
+            'team' => $this->whenLoaded('team'),
+            'visibility' => $this->visibility,
+            'order' => $this->order,
+            'created_by' => $this->created_by,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

@@ -5,10 +5,12 @@ import React from 'react';
 import { Maintenance } from '@/types/maintenance';
 import { Service } from '@/types/service';
 
+type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed';
+
 const statusOptions = [
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Completed' },
+  { value: 'scheduled' as MaintenanceStatus, label: 'Scheduled' },
+  { value: 'in_progress' as MaintenanceStatus, label: 'In Progress' },
+  { value: 'completed' as MaintenanceStatus, label: 'Completed' },
 ];
 
 interface Props {
@@ -22,12 +24,12 @@ interface Props {
 
 export default function MaintenanceEdit({ maintenance, services }: PageProps<Props>) {
   const { data, setData, put, processing, errors } = useForm({
-    service_id: String(maintenance.data.service_id || ''),
+    service_id: maintenance.data.service_id ? String(maintenance.data.service_id) : '',
     title: maintenance.data.title || '',
     description: maintenance.data.description || '',
     scheduled_start: maintenance.data.scheduled_start ? new Date(maintenance.data.scheduled_start).toISOString().slice(0, 16) : '',
     scheduled_end: maintenance.data.scheduled_end ? new Date(maintenance.data.scheduled_end).toISOString().slice(0, 16) : '',
-    status: maintenance.data.status || 'scheduled',
+    status: (maintenance.data.status as MaintenanceStatus) || 'scheduled',
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -57,19 +59,38 @@ export default function MaintenanceEdit({ maintenance, services }: PageProps<Pro
             <div className="grid gap-4">
               <div>
                 <Label htmlFor="service_id">Affected Service (Optional)</Label>
-                <Select value={data.service_id} onValueChange={(value) => setData('service_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a service (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No specific service</SelectItem>
-                    {services.data.map((service) => (
-                      <SelectItem key={service.id} value={service.id.toString()}>
-                        {service.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  {/* Show currently selected service */}
+                  {maintenance.data.service ? (
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Currently affecting: <span className="font-medium">{maintenance.data.service.name}</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Currently affecting: <span className="font-medium">No specific service</span>
+                    </div>
+                  )}
+                  
+                  <Select value={data.service_id} onValueChange={(value) => setData('service_id', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a service (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">No specific service</SelectItem>
+                      {services.data.map((service) => (
+                        <SelectItem key={service.id} value={service.id.toString()}>
+                          {service.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {maintenance.data.service 
+                      ? "You can change which service this maintenance affects, or remove it entirely"
+                      : "You can optionally select a specific service this maintenance affects"
+                    }
+                  </p>
+                </div>
                 {errors.service_id && <p className="text-red-500 text-sm mt-1">{errors.service_id}</p>}
               </div>
 
@@ -126,7 +147,7 @@ export default function MaintenanceEdit({ maintenance, services }: PageProps<Pro
 
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={data.status} onValueChange={(value) => setData('status', value)}>
+                <Select value={data.status} onValueChange={(value) => setData('status', value as MaintenanceStatus)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

@@ -8,6 +8,9 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\App;
 use App\Models\Organization;
+use App\Models\Service;
+use App\Models\Incident;
+use App\Models\Maintenance;
 use Illuminate\Http\Request;
 
 class Controller extends BaseController
@@ -118,5 +121,130 @@ class Controller extends BaseController
         } catch (\Exception $e) {
             return $user->role ?? null; // Fallback to legacy role
         }
+    }
+
+    /**
+     * Get services accessible to the user in the current organization
+     */
+    protected function getAccessibleServices($user, $organization)
+    {
+        $query = $organization->services();
+        
+        // Get user's role in the organization
+        $userRole = $this->getCurrentRole();
+        
+        if ($userRole === 'owner' || $userRole === 'admin') {
+            // Owners and admins see all services
+            return $query->with(['team', 'incidents'])->get();
+        }
+        
+        // Members see services based on team memberships and visibility
+        $userTeamIds = $user->teams()->where('organization_id', $organization->id)->pluck('teams.id');
+        
+        return $query->where(function ($q) use ($userTeamIds) {
+            $q->where('visibility', 'public')
+              ->orWhereIn('team_id', $userTeamIds)
+              ->orWhereNull('team_id'); // Unassigned services are visible to all
+        })->with(['team', 'incidents'])->get();
+    }
+
+    /**
+     * Get incidents accessible to the user in the current organization
+     */
+    protected function getAccessibleIncidents($user, $organization)
+    {
+        $query = $organization->incidents();
+        
+        // Get user's role in the organization
+        $userRole = $this->getCurrentRole();
+        
+        if ($userRole === 'owner' || $userRole === 'admin') {
+            // Owners and admins see all incidents
+            return $query->with(['services', 'creator', 'resolver'])->latest()->get();
+        }
+        
+        // Members see incidents for services they have access to
+        $accessibleServices = $this->getAccessibleServices($user, $organization);
+        $serviceIds = $accessibleServices->pluck('id');
+        
+        return $query->whereHas('services', function ($q) use ($serviceIds) {
+            $q->whereIn('services.id', $serviceIds);
+        })->with(['services', 'creator', 'resolver'])->latest()->get();
+    }
+
+    /**
+     * Get maintenances accessible to the user in the current organization
+     */
+    protected function getAccessibleMaintenances($user, $organization)
+    {
+        $query = $organization->maintenances();
+        
+        // Get user's role in the organization
+        $userRole = $this->getCurrentRole();
+        
+        if ($userRole === 'owner' || $userRole === 'admin') {
+            // Owners and admins see all maintenances
+            return $query->with(['service', 'creator'])->latest()->get();
+        }
+        
+        // Members see maintenances for services they have access to
+        $accessibleServices = $this->getAccessibleServices($user, $organization);
+        $serviceIds = $accessibleServices->pluck('id');
+        
+        return $query->where(function ($q) use ($serviceIds) {
+            $q->whereIn('service_id', $serviceIds)
+              ->orWhereNull('service_id'); // General maintenances are visible to all
+        })->with(['service', 'creator'])->latest()->get();
+    }
+
+    /**
+     * Validate that a resource belongs to the current organization
+     */
+    protected function validateResourceBelongsToOrganization($resource, $organizationId = null)
+    {
+        $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
+        
+        if ($resource->organization_id !== $organizationId) {
+            abort(403, 'Resource does not belong to your organization.');
+        }
+    }
+
+    /**
+     * Validate that services belong to the current organization
+     */
+    protected function validateServicesBelongToOrganization(array $serviceIds, $organizationId = null)
+    {
+        $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
+        
+        $validServices = Service::whereIn('id', $serviceIds)
+            ->where('organization_id', $organizationId)
+            ->pluck('id')
+            ->toArray();
+            
+        if (count($validServices) !== count($serviceIds)) {
+            abort(422, 'Some selected services do not belong to your organization.');
+        }
+        
+        return $validServices;
+    }
+
+    /**
+     * Validate that a team belongs to the current organization
+     */
+    protected function validateTeamBelongsToOrganization($teamId, $organizationId = null)
+    {
+        if (!$teamId) return null;
+        
+        $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
+        
+        $team = \App\Models\Team::where('id', $teamId)
+            ->where('organization_id', $organizationId)
+            ->first();
+            
+        if (!$team) {
+            abort(422, 'Team does not belong to your organization.');
+        }
+        
+        return $team;
     }
 }

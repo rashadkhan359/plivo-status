@@ -41,8 +41,40 @@ VITE_PUSHER_SCHEME="${PUSHER_SCHEME}"
 php artisan reverb:start
 ```
 
+## Queue Configuration
+Make sure your queue is running for broadcasting:
+```bash
+php artisan queue:work
+```
+
+## SSL/HTTPS Configuration
+If you're using HTTPS in production, the system automatically:
+- Uses WSS (WebSocket Secure) connections
+- Forces TLS encryption
+- Handles SSL certificate verification
+
 ## Testing Real-time Features
 1. Register/login to create an organization
 2. Create services, incidents, or maintenance 
 3. Open the public status page in another tab: `/status/{organization-slug}`
-4. Make changes in the dashboard - they should appear in real-time on the status page 
+4. Make changes in the dashboard - they should appear in real-time on the status page
+
+## Troubleshooting
+
+### 400 Error: "The plain HTTP request was sent to HTTPS port"
+This error occurs when WebSocket connections try to use HTTP on an HTTPS site. The system now automatically:
+- Detects HTTPS protocol and uses WSS
+- Forces TLS encryption for secure connections
+- Uses proper SSL configuration
+
+### Events Not Broadcasting
+1. Check that your queue worker is running: `php artisan queue:work`
+2. Verify broadcasting connection in `.env`: `BROADCAST_CONNECTION=pusher` or `reverb`
+3. Check browser console for WebSocket connection errors
+4. Ensure events implement `ShouldBroadcast` interface
+
+### WebSocket Connection Issues
+1. Verify Pusher/Reverb credentials in `.env`
+2. Check firewall settings for WebSocket ports
+3. Ensure proper SSL certificates for HTTPS sites
+4. Check browser console for connection errors 

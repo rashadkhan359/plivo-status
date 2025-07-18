@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import InputError from '@/components/input-error';
+import { IncidentTimeline } from '@/components/incident-timeline';
+import { IncidentUpdate } from '@/types/incident-update';
 
 type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved';
 
@@ -26,15 +28,8 @@ interface Incident {
     };
 }
 
-interface IncidentUpdate {
-    id: number;
-    message: string;
-    status: IncidentStatus;
-    created_at: string;
-}
-
 interface Props {
-    incident: { data: Incident };
+    incident: Incident;
     updates: { data: IncidentUpdate[] };
 }
 
@@ -60,25 +55,30 @@ type UpdateForm = {
 export default function IncidentUpdates({ incident, updates }: PageProps<Props>) {
     const { data, setData, post, processing, errors, reset } = useForm<UpdateForm>({
         message: '',
-        status: incident.data.status,
+        status: incident.status,
     });
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('incidents.updates.store', incident.data.id), {
+        console.log('Submitting update:', data);
+        post(route('incidents.updates.store', incident.id), {
             onSuccess: () => {
+                console.log('Update submitted successfully');
                 reset('message');
+            },
+            onError: (errors) => {
+                console.log('Update submission errors:', errors);
             },
         });
     };
 
     const breadcrumbs = [
         { title: 'Incidents', href: '/incidents' },
-        { title: incident.data.title, href: `/incidents/${incident.data.id}/updates` },
+        { title: incident.title, href: `/incidents/${incident.id}/updates` },
     ];
 
-    const StatusIcon = statusIcons[incident.data.status]?.icon || AlertTriangle;
-    const statusColor = statusIcons[incident.data.status]?.color || 'text-gray-500';
+    const StatusIcon = statusIcons[incident.status]?.icon || AlertTriangle;
+    const statusColor = statusIcons[incident.status]?.color || 'text-gray-500';
 
     const severityColors = {
         low: 'text-blue-600 bg-blue-50 border-blue-200',
@@ -86,12 +86,12 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
         high: 'text-orange-600 bg-orange-50 border-orange-200',
         critical: 'text-red-600 bg-red-50 border-red-200',
     };
-    const severityColor = severityColors[incident.data.severity as keyof typeof severityColors] || 'text-gray-600 bg-gray-50 border-gray-200';
+    const severityColor = severityColors[incident.severity as keyof typeof severityColors] || 'text-gray-600 bg-gray-50 border-gray-200';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <div className="p-4 max-w-4xl mx-auto">
-                <Head title={`Updates - ${incident.data.title}`} />
+                <Head title={`Updates - ${incident.title}`} />
                 
                 {/* Incident Header */}
                 <Card className="mb-6">
@@ -99,19 +99,19 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <CardTitle className="text-xl">{incident.data.title}</CardTitle>
+                                    <CardTitle className="text-xl">{incident.title}</CardTitle>
                                     <div className={cn(
                                         'flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold',
                                         statusColor,
                                     )}>
                                         <StatusIcon className="h-3 w-3" />
-                                        <span className="capitalize">{incident.data.status.replace('_', ' ')}</span>
+                                        <span className="capitalize">{incident.status.replace('_', ' ')}</span>
                                     </div>
                                 </div>
                                 
-                                {incident.data.service && (
+                                {incident.service && (
                                     <p className="text-sm text-muted-foreground mb-2">
-                                        Affecting: <span className="font-medium">{incident.data.service.name}</span>
+                                        Affecting: <span className="font-medium">{incident.service.name}</span>
                                     </p>
                                 )}
                                 
@@ -121,26 +121,26 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
                                         severityColor
                                     )}>
                                         <ShieldAlert className="h-3 w-3" />
-                                        <span className="capitalize">{incident.data.severity} severity</span>
+                                        <span className="capitalize">{incident.severity} severity</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Clock className="h-3 w-3" />
-                                        <span>Started {new Date(incident.data.created_at).toLocaleString()}</span>
+                                        <span>Started {new Date(incident.created_at).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </CardHeader>
-                    {incident.data.description && (
+                    {incident.description && (
                         <CardContent>
-                            <p className="text-muted-foreground">{incident.data.description}</p>
+                            <p className="text-muted-foreground">{incident.description}</p>
                         </CardContent>
                     )}
                 </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {/* Timeline */}
-                    <div className="lg:col-span-2">
+                    <div className="xl:col-span-2">
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -149,45 +149,11 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {updates.data.length === 0 ? (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                        <p>No updates yet</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        {updates.data.map((update, index) => {
-                                            const UpdateStatusIcon = statusIcons[update.status]?.icon || Info;
-                                            const updateStatusColor = statusIcons[update.status]?.color || 'text-gray-500';
-                                            
-                                            return (
-                                                <div key={update.id} className={cn(
-                                                    'relative pl-6 pb-6',
-                                                    index !== updates.data.length - 1 && 'border-l border-muted-foreground/20 ml-2'
-                                                )}>
-                                                    <div className="absolute -left-2.5 w-5 h-5 bg-background border-2 border-muted-foreground/20 rounded-full flex items-center justify-center">
-                                                        <UpdateStatusIcon className={cn('h-3 w-3', updateStatusColor)} />
-                                                    </div>
-                                                    <div className="bg-muted/30 rounded-lg p-4">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <div className={cn(
-                                                                'text-xs font-medium px-2 py-1 rounded-full',
-                                                                updateStatusColor,
-                                                                'bg-current/10'
-                                                            )}>
-                                                                {statusIcons[update.status]?.label || update.status}
-                                                            </div>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {new Date(update.created_at).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-sm">{update.message}</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                <IncidentTimeline 
+                                    updates={updates.data} 
+                                    enableRealtime={true}
+                                    showIcons={true}
+                                />
                             </CardContent>
                         </Card>
                     </div>

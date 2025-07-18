@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Incident;
 use App\Models\IncidentUpdate;
+use App\Enums\IncidentStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Http\Resources\IncidentUpdateResource;
 use App\Events\IncidentUpdateCreated;
+use App\Events\IncidentUpdated;
+use Illuminate\Validation\Rules\Enum;
 
 class IncidentUpdateController extends Controller
 {
@@ -42,12 +45,24 @@ class IncidentUpdateController extends Controller
     public function store(Request $request, Incident $incident)
     {
         $this->authorize('update', $incident);
+        
         $validated = $request->validate([
             'message' => 'required|string',
-            'status' => 'required|in:investigating,identified,monitoring,resolved',
+            'status' => ['required', new Enum(IncidentStatus::class)],
         ]);
-        $update = $incident->updates()->create($validated);
+        
+        $update = $incident->updates()->create([
+            'description' => $validated['message'],
+            'status' => $validated['status'],
+            'created_by' => Auth::id(),
+        ]);
+        
+        // Update the incident status as well
+        $incident->update(['status' => $validated['status']]);
+        
         event(new IncidentUpdateCreated($update));
+        event(new IncidentUpdated($incident->fresh()));
+        
         return redirect()->route('incidents.updates.index', $incident)->with('success', 'Update added.');
     }
 
@@ -57,12 +72,24 @@ class IncidentUpdateController extends Controller
     public function apiStore(Request $request, Incident $incident)
     {
         $this->authorize('update', $incident);
+        
         $validated = $request->validate([
             'message' => 'required|string',
-            'status' => 'required|in:investigating,identified,monitoring,resolved',
+            'status' => ['required', new Enum(IncidentStatus::class)],
         ]);
-        $update = $incident->updates()->create($validated);
+        
+        $update = $incident->updates()->create([
+            'description' => $validated['message'],
+            'status' => $validated['status'],
+            'created_by' => Auth::id(),
+        ]);
+        
+        // Update the incident status as well
+        $incident->update(['status' => $validated['status']]);
+        
         event(new IncidentUpdateCreated($update));
+        event(new IncidentUpdated($incident->fresh()));
+        
         return new IncidentUpdateResource($update);
     }
 } 

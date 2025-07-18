@@ -3,16 +3,14 @@
 namespace App\Events;
 
 use App\Models\Service;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class ServiceStatusChanged implements ShouldBroadcastNow
+class ServiceStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -30,15 +28,20 @@ class ServiceStatusChanged implements ShouldBroadcastNow
     public function broadcastOn()
     {
         return [
-            new PrivateChannel('organization.' . $this->organizationId),
             new Channel('status.' . $this->organizationSlug),
+            new PrivateChannel('organization.' . $this->organizationId),
         ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'ServiceStatusChanged';
     }
 
     public function broadcastWith()
     {
         return [
-            'service' => $this->service->toArray(),
+            'service' => $this->service->load(['team'])->toArray(),
         ];
     }
 } 

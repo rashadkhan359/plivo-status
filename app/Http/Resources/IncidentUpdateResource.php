@@ -17,7 +17,7 @@ class IncidentUpdateResource extends JsonResource
         return [
             'id' => $this->id,
             'incident_id' => $this->incident_id,
-            'message' => $this->message,
+            'message' => $this->description, // Map description to message for frontend compatibility
             'status' => $this->status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Calendar, CheckCircle, Loader } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRealtime } from '@/hooks/use-realtime';
 
 type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed';
 
@@ -19,6 +20,8 @@ interface MaintenanceListProps {
     };
     loading?: boolean;
     error?: string | null;
+    orgId?: string;
+    orgSlug?: string;
 }
 
 const statusConfig: Record<MaintenanceStatus, { icon: React.ElementType; color: string; label: string }> = {
@@ -27,7 +30,29 @@ const statusConfig: Record<MaintenanceStatus, { icon: React.ElementType; color: 
     completed: { icon: CheckCircle, color: 'text-green-500', label: 'Completed' },
 };
 
-export function MaintenanceList({ maintenances, loading, error }: MaintenanceListProps) {
+export function MaintenanceList({ maintenances, loading, error, orgId, orgSlug }: MaintenanceListProps) {
+    const [maintenanceList, setMaintenanceList] = useState<Maintenance[]>(maintenances.data);
+    const { state, subscribe, unsubscribe } = useRealtime();
+
+    // Real-time subscriptions
+    useEffect(() => {
+        if (!orgId || !orgSlug) return;
+        
+        const handleMaintenanceScheduled = (data: { maintenance: Maintenance }) => {
+            console.log('MaintenanceScheduled received:', data);
+            setMaintenanceList((prev) => [data.maintenance, ...prev]);
+        };
+
+        // Subscribe to both public and private channels
+        subscribe(`organization.${orgId}`, 'MaintenanceScheduled', handleMaintenanceScheduled);
+        subscribe(`status.${orgSlug}`, 'MaintenanceScheduled', handleMaintenanceScheduled);
+
+        return () => {
+            unsubscribe(`organization.${orgId}`, 'MaintenanceScheduled');
+            unsubscribe(`status.${orgSlug}`, 'MaintenanceScheduled');
+        };
+    }, [orgId, orgSlug, subscribe, unsubscribe]);
+
     console.log(`maintenances`, maintenances);
     if (loading) {
         return (
@@ -43,29 +68,31 @@ export function MaintenanceList({ maintenances, loading, error }: MaintenanceLis
         return <div className="text-sm text-red-500">{error}</div>;
     }
 
-    if (!maintenances.data.length) {
-        return <div className="text-sm text-muted-foreground">No scheduled maintenance.</div>;
+    if (!maintenanceList.length) {
+        return <div className="text-sm text-muted-foreground">No maintenance scheduled.</div>;
     }
 
     return (
         <div className="space-y-4">
-            {maintenances.data.map((m) => {
-                const config = statusConfig[m.status];
+            {maintenanceList.map((maintenance) => {
+                const config = statusConfig[maintenance.status];
                 const Icon = config.icon;
+
                 return (
-                    <Card key={m.id}>
-                        <CardHeader>
-                            <div className="flex items-start justify-between">
-                                <CardTitle className="text-lg">{m.title}</CardTitle>
-                                <div className={cn('flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold', config.color)}>
-                                    <Icon className={cn('h-4 w-4', m.status === 'in_progress' && 'animate-spin')} />
-                                    <span>{config.label}</span>
+                    <Card key={maintenance.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">{maintenance.title}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <Icon className={cn('h-4 w-4', config.color)} />
+                                    <span className="text-sm font-medium">{config.label}</span>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-0">
                             <div className="text-sm text-muted-foreground">
-                                Scheduled from {new Date(m.scheduled_start).toLocaleString()} to {new Date(m.scheduled_end).toLocaleString()}
+                                <div>Start: {new Date(maintenance.scheduled_start).toLocaleString()}</div>
+                                <div>End: {new Date(maintenance.scheduled_end).toLocaleString()}</div>
                             </div>
                         </CardContent>
                     </Card>

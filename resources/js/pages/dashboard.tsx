@@ -7,10 +7,14 @@ import { Service } from '@/types/service';
 import { Incident } from '@/types/incident';
 import { Maintenance } from '@/types/maintenance';
 import { LayoutGrid, Wrench, AlertTriangle, Calendar } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
+import { type SharedData } from '@/types';
+import { IncidentUpdate } from '@/types/incident-update';
 
 interface DashboardProps {
   services: { data: Service[] };
   incidents: { data: Incident[] };
+  incidentUpdates: { data: IncidentUpdate[] };
   maintenances: { data: Maintenance[] };
   stats: {
     servicesCount: number;
@@ -19,7 +23,10 @@ interface DashboardProps {
   };
 }
 
-export default function Dashboard({ services, incidents, maintenances, stats }: DashboardProps) {
+export default function Dashboard({ services, incidents, incidentUpdates, maintenances, stats }: DashboardProps) {
+  const { props } = usePage<SharedData>();
+  const organization = props.auth?.currentOrganization;
+  
   return (
     <AppLayout>
       <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto w-full">
@@ -73,17 +80,29 @@ export default function Dashboard({ services, incidents, maintenances, stats }: 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
             <h2 className="text-xl font-semibold mb-6">Services Status</h2>
-            <ServiceList initialServices={services.data} />
+            <ServiceList 
+              initialServices={services.data} 
+              orgId={organization?.id?.toString()}
+              orgSlug={organization?.slug}
+            />
           </div>
           <div>
             <h2 className="text-xl font-semibold mb-6">Recent Incidents</h2>
-            <IncidentList initialIncidents={incidents.data} />
+            <IncidentList
+              initialIncidents={incidents.data}
+              orgId={organization?.id?.toString()}
+              orgSlug={organization?.slug}
+            />
           </div>
         </div>
 
         <div>
           <h2 className="text-xl font-semibold mb-6">Upcoming Maintenance</h2>
-          <MaintenanceList maintenances={maintenances} />
+          <MaintenanceList 
+            maintenances={maintenances}
+            orgId={organization?.id?.toString()}
+            orgSlug={organization?.slug}
+          />
         </div>
       </div>
     </AppLayout>

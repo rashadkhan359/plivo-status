@@ -27,6 +27,8 @@ Route::middleware(['auth', 'organization.context'])->group(function () {
     Route::patch('settings/organization', [OrganizationController::class, 'update'])->name('organization.update');
 
     Route::get('settings/organization/team', [OrganizationController::class, 'team'])->name('organization.team');
+    Route::get('settings/organization/invite', [OrganizationController::class, 'inviteForm'])->name('organization.invite');
+    Route::post('settings/organization/invite', [OrganizationController::class, 'invite'])->name('organization.invite.store');
     Route::patch('settings/organization/team/role', [OrganizationController::class, 'updateMemberRole'])->name('organization.team.role');
     Route::delete('settings/organization/team/member', [OrganizationController::class, 'removeMember'])->name('organization.team.remove');
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import { Check, Clock, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -62,11 +63,12 @@ export function ServiceStatusUpdate({ service, open, onOpenChange }: ServiceStat
   const [message, setMessage] = useState('');
   const [createIncident, setCreateIncident] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const { success, error } = useToast();
 
   const currentStatus = statusOptions.find(option => option.value === service.status);
   const selectedStatus = statusOptions.find(option => option.value === status);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setUpdating(true);
     
     const updateData: any = { status };
@@ -76,11 +78,14 @@ export function ServiceStatusUpdate({ service, open, onOpenChange }: ServiceStat
       updateData.incident_message = message;
     }
 
-    router.patch(`/services/${service.id}`, updateData, {
+    router.patch(`/services/${service.id}/status`, updateData, {
       onSuccess: () => {
         onOpenChange(false);
         setMessage('');
         setCreateIncident(false);
+      },
+      onError: (errors) => {
+        error('Failed to update service status');
       },
       onFinish: () => {
         setUpdating(false);

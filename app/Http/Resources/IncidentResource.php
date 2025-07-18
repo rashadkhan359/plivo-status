@@ -31,6 +31,20 @@ class IncidentResource extends JsonResource
                     'name' => $this->service->name,
                 ];
             }),
+            'services' => $this->whenLoaded('services', function () {
+                return $this->services->map(function ($service) {
+                    return [
+                        'id' => $service->id,
+                        'name' => $service->name,
+                        'status' => $service->status,
+                        'team' => $service->team ? [
+                            'id' => $service->team->id,
+                            'name' => $service->team->name,
+                            'color' => $service->team->color,
+                        ] : null,
+                    ];
+                });
+            }),
         ];
     }
 } 

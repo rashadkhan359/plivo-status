@@ -5,6 +5,7 @@ namespace App\Events;
 use App\Models\Incident;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -27,15 +28,20 @@ class IncidentCreated implements ShouldBroadcast
     public function broadcastOn()
     {
         return [
+            new Channel('status.' . $this->organizationSlug),
             new PrivateChannel('organization.' . $this->organizationId),
-            new PrivateChannel('status.' . $this->organizationSlug),
         ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'IncidentCreated';
     }
 
     public function broadcastWith()
     {
         return [
-            'incident' => $this->incident->toArray(),
+            'incident' => $this->incident->load(['services', 'creator', 'resolver'])->toArray(),
         ];
     }
 } 

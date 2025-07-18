@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
+import AppLayout from '@/layouts/app-layout';
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     // When server-side rendering, we only render the layout on the client...

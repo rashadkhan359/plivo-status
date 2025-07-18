@@ -25,8 +25,9 @@ class MaintenanceResource extends JsonResource
             'scheduled_end' => $this->scheduled_end,
             'status' => $this->status,
             'created_at' => $this->created_at,
-                        'updated_at' => $this->updated_at,
+            'updated_at' => $this->updated_at,
             'organization' => new OrganizationResource($this->whenLoaded('organization')),
+            'service' => $this->whenLoaded('service'),
         ];
     }
 } 

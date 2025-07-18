@@ -21,6 +21,7 @@ class TeamController extends Controller
         
         $organization = App::get('current_organization');
         $teams = $organization->teams()->with(['members', 'services'])->get();
+        dd($teams);
         
         return Inertia::render('teams/index', [
             'teams' => $teams,
@@ -55,7 +56,7 @@ class TeamController extends Controller
         
         $team = $organization->teams()->create($validated);
         
-        return redirect()->route('teams.index')->with('success', 'Team created.');
+        return redirect()->route('teams.index')->with('success', 'Team created successfully.');
     }
 
     /**
@@ -100,7 +101,7 @@ class TeamController extends Controller
         
         $team->update($validated);
         
-        return redirect()->route('teams.index')->with('success', 'Team updated.');
+        return redirect()->route('teams.index')->with('success', 'Team updated successfully.');
     }
 
     /**
@@ -112,7 +113,7 @@ class TeamController extends Controller
         
         $team->delete();
         
-        return redirect()->route('teams.index')->with('success', 'Team deleted.');
+        return redirect()->route('teams.index')->with('success', 'Team deleted successfully.');
     }
 
     /**

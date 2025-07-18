@@ -87,7 +87,7 @@ class MaintenanceController extends Controller
         
         event(new MaintenanceScheduled($maintenance));
         
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance scheduled.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance scheduled successfully.');
     }
 
     /**
@@ -138,7 +138,7 @@ class MaintenanceController extends Controller
         
         $maintenance->update($validated);
         
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance updated.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance updated successfully.');
     }
 
     /**
@@ -148,7 +148,7 @@ class MaintenanceController extends Controller
     {
         $this->authorize('delete', $maintenance);
         $maintenance->delete();
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance deleted.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance deleted successfully.');
     }
 
     /**
@@ -163,7 +163,7 @@ class MaintenanceController extends Controller
             'actual_start' => now(),
         ]);
         
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance started.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance started successfully.');
     }
 
     /**
@@ -178,7 +178,7 @@ class MaintenanceController extends Controller
             'actual_end' => now(),
         ]);
         
-        return redirect()->route('maintenances.index')->with('success', 'Maintenance completed.');
+        return redirect()->route('maintenances.index')->with('success', 'Maintenance completed successfully.');
     }
 
     /**

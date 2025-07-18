@@ -9,6 +9,7 @@ use App\Http\Controllers\IncidentUpdateController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\PublicStatusController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\Admin\OrganizationController;
 use App\Http\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
 use App\Http\Controllers\TeamController;
@@ -21,6 +22,10 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 // Public status page routes (no authentication required)
 Route::get('/status/{organization:slug}', [PublicStatusController::class, 'show'])->name('status.public');
 
+// Invitation routes (no authentication required)
+Route::get('/invitation/{token}', [InvitationController::class, 'show'])->name('invitation.show');
+Route::post('/invitation/{token}', [InvitationController::class, 'accept'])->name('invitation.accept');
+
 // Authenticated routes
 Route::middleware(['auth', 'verified'])->group(function () {
     // Organization context routes (including dashboard)
@@ -29,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
         // Services
         Route::resource('services', ServiceController::class);
+        Route::patch('services/{service}/status', [ServiceController::class, 'updateStatus'])->name('services.status');
         
         // Incidents
         Route::resource('incidents', IncidentController::class);

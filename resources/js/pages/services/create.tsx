@@ -37,7 +37,7 @@ export default function ServiceCreate({ teams }: PageProps<Props>) {
     name: '',
     description: '',
     status: 'operational',
-    team_id: '',
+    team_id: 'none',
     visibility: 'public',
     order: '',
   });
@@ -62,7 +62,7 @@ export default function ServiceCreate({ teams }: PageProps<Props>) {
     <>
       <AppLayout breadcrumbs={breadcrumbs}>
         <Head title="Add Service" />
-        <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto w-full">
+        <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto w-full">
           <div>
             <h1 className="text-3xl font-bold">Add Service</h1>
             <p className="text-muted-foreground mt-2">Create a new service to monitor</p>
@@ -123,7 +123,7 @@ export default function ServiceCreate({ teams }: PageProps<Props>) {
                       <SelectValue placeholder="Select a team (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No team (unassigned)</SelectItem>
+                      <SelectItem value="none">No team (unassigned)</SelectItem>
                       {teams.map(team => (
                         <SelectItem key={team.id} value={team.id.toString()}>
                           <div className="flex items-center gap-2">
@@ -163,7 +163,7 @@ export default function ServiceCreate({ teams }: PageProps<Props>) {
                     </SelectContent>
                   </Select>
                   {errors.visibility && <p className="text-sm text-red-500">{errors.visibility}</p>}
-                  {data.visibility === 'private' && !data.team_id && (
+                  {data.visibility === 'private' && data.team_id === 'none' && (
                     <p className="text-sm text-amber-600">
                       Private services should be assigned to a team for proper access control.
                     </p>

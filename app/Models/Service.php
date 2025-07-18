@@ -204,5 +204,46 @@ class Service extends Model
                     ->orderBy('scheduled_start');
     }
 
+    /**
+     * Update the service status and fire events.
+     */
+    public function updateStatus(string $status): bool
+    {
+        $oldStatus = $this->status;
+        $updated = $this->update(['status' => $status]);
+        
+        if ($updated && $oldStatus !== $status) {
+            event(new \App\Events\ServiceStatusChanged($this));
+        }
+        
+        return $updated;
+    }
 
+    /**
+     * Get the status color for UI display.
+     */
+    public function getStatusColor(): string
+    {
+        return match($this->status) {
+            'operational' => 'text-green-600',
+            'degraded' => 'text-yellow-600',
+            'partial_outage' => 'text-orange-600',
+            'major_outage' => 'text-red-600',
+            default => 'text-gray-600',
+        };
+    }
+
+    /**
+     * Get the status icon for UI display.
+     */
+    public function getStatusIcon(): string
+    {
+        return match($this->status) {
+            'operational' => 'Check',
+            'degraded' => 'Clock',
+            'partial_outage' => 'AlertTriangle',
+            'major_outage' => 'XCircle',
+            default => 'HelpCircle',
+        };
+    }
 } 

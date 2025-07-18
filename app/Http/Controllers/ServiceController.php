@@ -70,16 +70,19 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => ['required', new Enum(ServiceStatus::class)],
-            'team_id' => 'nullable|exists:teams,id',
+            'team_id' => 'nullable|string',
             'visibility' => 'required|in:public,private',
             'order' => 'nullable|integer|min:0',
         ]);
         
-        // Validate team belongs to organization
+        // Convert "none" to null for team_id
+        if (isset($validated['team_id']) && $validated['team_id'] === 'none') {
+            $validated['team_id'] = null;
+        }
+        
+        // Validate team belongs to organization if team_id is not null
         if ($validated['team_id']) {
-            $team = Team::where('id', $validated['team_id'])
-                ->where('organization_id', $organization->id)
-                ->firstOrFail();
+            $this->validateTeamBelongsToOrganization($validated['team_id']);
         }
         
         $service = $organization->services()->create([
@@ -90,7 +93,7 @@ class ServiceController extends Controller
         
         event(new ServiceStatusChanged($service));
         
-        return redirect()->route('services.index')->with('success', 'Service created.');
+        return redirect()->route('services.index')->with('success', 'Service created successfully.');
     }
 
     /**
@@ -118,28 +121,53 @@ class ServiceController extends Controller
         
         $organization = $this->getCurrentOrganization();
         
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status' => ['required', new Enum(ServiceStatus::class)],
-            'team_id' => 'nullable|exists:teams,id',
-            'visibility' => 'required|in:public,private',
-            'order' => 'nullable|integer|min:0',
-            'create_incident' => 'boolean',
-            'incident_message' => 'nullable|string|required_if:create_incident,true',
-            'affected_services' => 'nullable|array',
-            'affected_services.*' => 'exists:services,id',
-        ]);
+        // Check if this is a status-only update
+        $statusOnlyFields = ['status', 'create_incident', 'incident_message', 'affected_services'];
+        $requestFields = array_keys($request->all());
+        $isStatusOnlyUpdate = $request->has('status') && 
+            count(array_intersect($requestFields, $statusOnlyFields)) === count($requestFields);
+        
+        if ($isStatusOnlyUpdate) {
+            // For status-only updates, only validate status-related fields
+            $validated = $request->validate([
+                'status' => ['required', new Enum(ServiceStatus::class)],
+                'create_incident' => 'boolean',
+                'incident_message' => 'nullable|string|required_if:create_incident,true',
+                'affected_services' => 'nullable|array',
+                'affected_services.*' => 'exists:services,id',
+            ]);
+            
+            // Only update the status field
+            $oldStatus = $service->status;
+            $service->updateStatus($validated['status']);
+        } else {
+            // For full updates, validate all fields
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'status' => ['required', new Enum(ServiceStatus::class)],
+                'team_id' => 'nullable|string',
+                'visibility' => 'required|in:public,private',
+                'order' => 'nullable|integer|min:0',
+                'create_incident' => 'boolean',
+                'incident_message' => 'nullable|string|required_if:create_incident,true',
+                'affected_services' => 'nullable|array',
+                'affected_services.*' => 'exists:services,id',
+            ]);
 
-        // Validate team belongs to organization
-        if ($validated['team_id']) {
-            $team = Team::where('id', $validated['team_id'])
-                ->where('organization_id', $organization->id)
-                ->firstOrFail();
+            // Convert "none" to null for team_id
+            if (isset($validated['team_id']) && $validated['team_id'] === 'none') {
+                $validated['team_id'] = null;
+            }
+
+            // Validate team belongs to organization if team_id is not null
+            if ($validated['team_id']) {
+                $this->validateTeamBelongsToOrganization($validated['team_id']);
+            }
+
+            $oldStatus = $service->status;
+            $service->update($validated);
         }
-
-        $oldStatus = $service->status;
-        $service->update($validated);
 
         // Create incident if requested and status is downgraded
         if (
@@ -155,6 +183,7 @@ class ServiceController extends Controller
             };
 
             $incident = $organization->incidents()->create([
+                'service_id' => $service->id, // Use the current service as primary
                 'title' => "Service Status Change: {$service->name}",
                 'description' => $request->input('incident_message'),
                 'status' => IncidentStatus::INVESTIGATING,
@@ -171,7 +200,60 @@ class ServiceController extends Controller
         }
 
         event(new ServiceStatusChanged($service));
-        return redirect()->route('services.index')->with('success', 'Service updated.');
+        return redirect()->route('services.index')->with('success', 'Service updated successfully.');
+    }
+
+    /**
+     * Update only the status of a service.
+     */
+    public function updateStatus(Request $request, Service $service)
+    {
+        $this->authorize('update', $service);
+        
+        $organization = $this->getCurrentOrganization();
+        
+        $validated = $request->validate([
+            'status' => ['required', new Enum(ServiceStatus::class)],
+            'create_incident' => 'boolean',
+            'incident_message' => 'nullable|string|required_if:create_incident,true',
+            'affected_services' => 'nullable|array',
+            'affected_services.*' => 'exists:services,id',
+        ]);
+
+        $oldStatus = $service->status;
+        $service->updateStatus($validated['status']);
+
+        // Create incident if requested and status is downgraded
+        if (
+            $request->boolean('create_incident') && 
+            $validated['status'] !== 'operational' && 
+            $request->filled('incident_message')
+        ) {
+            $severity = match($validated['status']) {
+                'degraded' => IncidentSeverity::MEDIUM,
+                'partial_outage' => IncidentSeverity::HIGH,
+                'major_outage' => IncidentSeverity::CRITICAL,
+                default => IncidentSeverity::LOW,
+            };
+
+            $incident = $organization->incidents()->create([
+                'service_id' => $service->id, // Use the current service as primary
+                'title' => "Service Status Change: {$service->name}",
+                'description' => $request->input('incident_message'),
+                'status' => IncidentStatus::INVESTIGATING,
+                'severity' => $severity,
+                'created_by' => Auth::id(),
+            ]);
+            
+            // Attach affected services (including the updated service)
+            $affectedServices = $request->input('affected_services', []);
+            $affectedServices[] = $service->id;
+            $incident->services()->attach(array_unique($affectedServices));
+
+            event(new IncidentCreated($incident));
+        }
+
+        return redirect()->back()->with('success', 'Service status updated successfully.');
     }
 
     /**
@@ -181,31 +263,6 @@ class ServiceController extends Controller
     {
         $this->authorize('delete', $service);
         $service->delete();
-        return redirect()->route('services.index')->with('success', 'Service deleted.');
-    }
-
-    /**
-     * Get services accessible to the user based on role and team membership
-     */
-    protected function getAccessibleServices($user, $organization)
-    {
-        $query = $organization->services()->with(['team']);
-        
-        // If user is not admin/owner, filter by visibility and team membership
-        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
-            $userTeamIds = $user->teams()->pluck('teams.id');
-            
-            $query->where(function ($q) use ($userTeamIds) {
-                // Public services are always visible
-                $q->where('visibility', 'public')
-                  // Or private services where user is in the team
-                  ->orWhere(function ($subQ) use ($userTeamIds) {
-                      $subQ->where('visibility', 'private')
-                           ->whereIn('team_id', $userTeamIds);
-                  });
-            });
-        }
-        
-        return $query->orderBy('order')->get();
+        return redirect()->route('services.index')->with('success', 'Service deleted successfully.');
     }
 } 
