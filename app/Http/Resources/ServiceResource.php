@@ -14,19 +14,30 @@ class ServiceResource extends JsonResource
      */
     public function toArray($request)
     {
-        return [
+        // Check if this is a public request (no authenticated user)
+        $isPublic = !$request->user();
+        
+        $data = [
             'id' => $this->id,
-            'organization_id' => $this->organization_id,
             'name' => $this->name,
             'description' => $this->description,
             'status' => $this->status,
-            'team_id' => $this->team_id,
-            'team' => $this->whenLoaded('team'),
             'visibility' => $this->visibility,
             'order' => $this->order,
-            'created_by' => $this->created_by,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
+        
+        // Only include sensitive data for authenticated users
+        if (!$isPublic) {
+            $data = array_merge($data, [
+                'organization_id' => $this->organization_id,
+                'team_id' => $this->team_id,
+                'team' => $this->whenLoaded('team'),
+                'created_by' => $this->created_by,
+                'created_at' => $this->created_at,
+            ]);
+        }
+        
+        return $data;
     }
 } 

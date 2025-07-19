@@ -6,6 +6,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Calendar, Clock, Edit, Plus, Trash2 } from 'lucide-react';
 import React from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface Maintenance {
     id: number;
@@ -34,6 +35,7 @@ const statusColors = {
 
 export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
     const toast = useToast();
+    const permissions = usePermissions();
     
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [maintenanceToDelete, setMaintenanceToDelete] = React.useState<Maintenance | null>(null);
@@ -78,12 +80,14 @@ export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
                             <h1 className="text-3xl font-bold">Maintenance</h1>
                             <p className="text-muted-foreground mt-2">Schedule and manage planned maintenance windows</p>
                         </div>
-                        <Link href="/maintenances/create">
-                            <Button className="flex items-center gap-2">
-                                <Plus className="h-4 w-4" />
-                                Schedule Maintenance
-                            </Button>
-                        </Link>
+                        {permissions.canCreateMaintenance() && (
+                            <Link href="/maintenances/create">
+                                <Button className="flex items-center gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    Schedule Maintenance
+                                </Button>
+                            </Link>
+                        )}
                     </div>
 
                     {/* Content */}
@@ -92,9 +96,11 @@ export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
                             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-semibold mb-2">No maintenance scheduled</h3>
                             <p className="text-muted-foreground mb-6">Keep your users informed about planned service interruptions</p>
-                            <Link href="/maintenances/create">
-                                <Button>Schedule maintenance</Button>
-                            </Link>
+                            {permissions.canCreateMaintenance() && (
+                                <Link href="/maintenances/create">
+                                    <Button>Schedule maintenance</Button>
+                                </Link>
+                            )}
                         </div>
                     ) : (
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -132,19 +138,23 @@ export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
                                     </CardContent>
 
                                     <div className="flex gap-2 mt-4 pt-4 border-t">
-                                        <Link href={`/maintenances/${maintenance.id}/edit`} className="flex-1">
-                                            <Button size="sm" variant="outline" className="w-full flex items-center gap-2">
-                                                <Edit className="h-4 w-4" />
-                                                Edit
-                                            </Button>
-                                        </Link>
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => handleDeleteClick(maintenance)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        {permissions.canManageMaintenance(maintenance) && (
+                                            <>
+                                                <Link href={`/maintenances/${maintenance.id}/edit`} className="flex-1">
+                                                    <Button size="sm" variant="outline" className="w-full flex items-center gap-2">
+                                                        <Edit className="h-4 w-4" />
+                                                        Edit
+                                                    </Button>
+                                                </Link>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    onClick={() => handleDeleteClick(maintenance)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                 </Card>
                             ))}

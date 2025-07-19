@@ -62,34 +62,6 @@ export default function AcceptInvitation({ invitation }: AcceptInvitationProps) 
     };
 
     const expiresAt = new Date(invitation.expires_at);
-    const isExpired = expiresAt < new Date();
-
-    if (isExpired) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
-                <Head title="Invitation Expired" />
-                
-                <Card className="max-w-md w-full">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-destructive">Invitation Expired</CardTitle>
-                        <CardDescription>
-                            This invitation has expired and is no longer valid.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Please contact {invitation.invited_by.name} to request a new invitation.
-                        </p>
-                        <Button asChild>
-                            <a href={route('home')}>
-                                Return to Home
-                            </a>
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">

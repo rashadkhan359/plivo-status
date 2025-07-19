@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
 use Illuminate\Support\Facades\App;
+use App\Services\PermissionService;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,59 +30,7 @@ class HandleInertiaRequests extends Middleware
         return parent::version($request);
     }
 
-    /**
-     * Get permissions for a given role
-     */
-    private function getPermissionsForRole(string $role): array
-    {
-        return match ($role) {
-            'owner' => [
-                'manage_organization' => true,
-                'manage_users' => true,
-                'manage_teams' => true,
-                'manage_services' => true,
-                'manage_incidents' => true,
-                'manage_maintenance' => true,
-                'view_analytics' => true,
-            ],
-            'admin' => [
-                'manage_organization' => true,
-                'manage_users' => true,
-                'manage_teams' => true,
-                'manage_services' => true,
-                'manage_incidents' => true,
-                'manage_maintenance' => true,
-                'view_analytics' => true,
-            ],
-            'team_lead' => [
-                'manage_organization' => false,
-                'manage_users' => false,
-                'manage_teams' => true,
-                'manage_services' => true,
-                'manage_incidents' => true,
-                'manage_maintenance' => true,
-                'view_analytics' => true,
-            ],
-            'member' => [
-                'manage_organization' => false,
-                'manage_users' => false,
-                'manage_teams' => false,
-                'manage_services' => false,
-                'manage_incidents' => true, // Members can view and create incidents
-                'manage_maintenance' => false,
-                'view_analytics' => false,
-            ],
-            default => [
-                'manage_organization' => false,
-                'manage_users' => false,
-                'manage_teams' => false,
-                'manage_services' => false,
-                'manage_incidents' => false,
-                'manage_maintenance' => false,
-                'view_analytics' => false,
-            ],
-        };
-    }
+
 
     /**
      * Define the props that are shared by default.
@@ -114,19 +63,29 @@ class HandleInertiaRequests extends Middleware
         // Get user's role and permissions in current organization
         $currentRole = null;
         $currentPermissions = [];
+        $permissionService = app(PermissionService::class);
         
         // Check if user is system admin first
         if ($user && $user->isSystemAdmin()) {
             $currentRole = 'system_admin';
             $currentPermissions = [
-                'manage_organization' => true,
-                'manage_users' => true,
-                'manage_teams' => true,
-                'manage_services' => true,
-                'manage_incidents' => true,
-                'manage_maintenance' => true,
-                'view_analytics' => true,
-                'system_admin' => true,
+                'organization' => [
+                    'manage_organization' => true,
+                    'manage_users' => true,
+                    'manage_teams' => true,
+                    'manage_services' => true,
+                    'manage_incidents' => true,
+                    'manage_maintenance' => true,
+                    'view_analytics' => true,
+                    'system_admin' => true,
+                ],
+                'teams' => [],
+                'resources' => [
+                    'teams' => ['accessible' => [], 'can_create' => true],
+                    'services' => ['accessible' => [], 'can_create' => true],
+                    'incidents' => ['can_create' => true],
+                    'maintenance' => ['can_create' => true],
+                ],
             ];
         } elseif ($user && $currentOrganization) {
             $userOrganization = $user->organizations()
@@ -135,7 +94,9 @@ class HandleInertiaRequests extends Middleware
                 
             if ($userOrganization) {
                 $currentRole = $userOrganization->pivot->role ?? 'member';
-                $currentPermissions = $this->getPermissionsForRole($userOrganization->pivot->role ?? 'member');
+                
+                // Get detailed user permissions with resource access
+                $currentPermissions = $permissionService->getDetailedUserPermissions($user, $currentOrganization);
             }
         }
         
@@ -144,7 +105,7 @@ class HandleInertiaRequests extends Middleware
             $userOrganization = $user->organizations()->first();
             if ($userOrganization) {
                 $currentRole = $userOrganization->pivot->role ?? 'member';
-                $currentPermissions = $this->getPermissionsForRole($userOrganization->pivot->role ?? 'member');
+                $currentPermissions = $permissionService->getDetailedUserPermissions($user, $userOrganization);
                 $currentOrganization = $currentOrganization ?? $userOrganization;
             }
         }

@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\ServiceResource;
 use App\Events\ServiceStatusChanged;
+use App\Events\ServiceCreated;
+use App\Events\ServiceUpdated;
 use Illuminate\Validation\Rules\Enum;
 
 class ServiceController extends Controller
@@ -54,6 +56,8 @@ class ServiceController extends Controller
             'order' => $validated['order'] ?? $organization->services()->max('order') + 1,
         ]);
         
+        event(new ServiceCreated($service));
+        event(new ServiceUpdated($service));
         event(new ServiceStatusChanged($service));
         
         return new ServiceResource($service);

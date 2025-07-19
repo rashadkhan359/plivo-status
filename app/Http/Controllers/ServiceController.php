@@ -13,6 +13,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 use App\Http\Resources\ServiceResource;
 use App\Events\ServiceStatusChanged;
+use App\Events\ServiceCreated;
+use App\Events\ServiceUpdated;
 use App\Events\IncidentCreated;
 use App\Enums\IncidentSeverity;
 use App\Enums\IncidentStatus;
@@ -40,7 +42,6 @@ class ServiceController extends Controller
         return Inertia::render('services/index', [
             'services' => ServiceResource::collection($services),
             'teams' => $teams,
-            'canCreate' => $user->can('create', Service::class),
         ]);
     }
 
@@ -94,6 +95,7 @@ class ServiceController extends Controller
             'order' => $validated['order'] ?? $organization->services()->max('order') + 1,
         ]);
         
+        event(new ServiceCreated($service));
         event(new ServiceStatusChanged($service));
         
         return redirect()->route('services.index')->with('success', 'Service created successfully.');
@@ -202,6 +204,7 @@ class ServiceController extends Controller
             event(new IncidentCreated($incident));
         }
 
+        event(new ServiceUpdated($service));
         event(new ServiceStatusChanged($service));
         return redirect()->route('services.index')->with('success', 'Service updated successfully.');
     }

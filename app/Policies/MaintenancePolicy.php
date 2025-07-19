@@ -4,18 +4,32 @@ namespace App\Policies;
 
 use App\Models\Maintenance;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class MaintenancePolicy
 {
     use HandlesAuthorization;
 
+    protected PermissionService $permissionService;
+
+    public function __construct(PermissionService $permissionService)
+    {
+        $this->permissionService = $permissionService;
+    }
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->hasOrganizationAccess($user);
+        // System admin can view all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // User must belong to an organization
+        return $user->organizations()->exists() || !is_null($user->organization_id);
     }
 
     /**
@@ -23,7 +37,8 @@ class MaintenancePolicy
      */
     public function view(User $user, Maintenance $maintenance): bool
     {
-        return $this->belongsToSameOrganization($user, $maintenance);
+        // Use PermissionService to check access
+        return $this->permissionService->userCanAccessMaintenance($user, $maintenance);
     }
 
     /**
@@ -31,8 +46,26 @@ class MaintenancePolicy
      */
     public function create(User $user): bool
     {
-        return $this->hasPermission($user, 'manage_maintenance') || 
-               $this->hasRole($user, ['owner', 'admin', 'team_lead']);
+        // System admin can create
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        $organization = $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
+
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_maintenance')) {
+            return true;
+        }
+
+        // Check if user has team-level permission in any team
+        $accessibleTeams = $this->permissionService->getUserAccessibleTeams($user, $organization);
+        return $accessibleTeams->some(function ($team) use ($user) {
+            return $this->permissionService->userHasTeamPermission($user, $team, 'manage_maintenance');
+        });
     }
 
     /**
@@ -40,18 +73,34 @@ class MaintenancePolicy
      */
     public function update(User $user, Maintenance $maintenance): bool
     {
-        if (!$this->belongsToSameOrganization($user, $maintenance)) {
+        // System admin can update all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // Must have access to the maintenance first
+        if (!$this->permissionService->userCanAccessMaintenance($user, $maintenance)) {
             return false;
         }
 
-        // Owners and admins can update any maintenance
-        if ($this->hasRole($user, ['owner', 'admin'])) {
+        $organization = $maintenance->organization ?? $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
+
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_maintenance')) {
             return true;
         }
 
-        // Team leads can update maintenance for their team's services
-        if ($this->hasRole($user, ['team_lead']) && $this->canManageMaintenanceService($user, $maintenance)) {
-            return true;
+        // Check team-level permission for any of the maintenance's services
+        foreach ($maintenance->services as $service) {
+            if ($service->team_id) {
+                $team = $service->team;
+                if ($team && $this->permissionService->userHasTeamPermission($user, $team, 'manage_maintenance')) {
+                    return true;
+                }
+            }
         }
 
         // Maintenance creator can update their own maintenance
@@ -63,80 +112,51 @@ class MaintenancePolicy
      */
     public function delete(User $user, Maintenance $maintenance): bool
     {
-        if (!$this->belongsToSameOrganization($user, $maintenance)) {
+        // System admin can delete all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // Must have access to the maintenance first
+        if (!$this->permissionService->userCanAccessMaintenance($user, $maintenance)) {
             return false;
         }
 
-        // Only owners, admins, and maintenance creators can delete
-        return $this->hasRole($user, ['owner', 'admin']) || 
-               $maintenance->created_by === $user->id;
-    }
+        $organization = $maintenance->organization ?? $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
 
-    /**
-     * Check if user has organization access
-     */
-    protected function hasOrganizationAccess(User $user): bool
-    {
-        return $user->organizations()->wherePivot('is_active', true)->exists() || 
-               !is_null($user->organization_id);
-    }
-
-    /**
-     * Check if user belongs to same organization as maintenance
-     */
-    protected function belongsToSameOrganization(User $user, Maintenance $maintenance): bool
-    {
-        // Check new pivot table
-        if ($user->organizations()->where('organizations.id', $maintenance->organization_id)->exists()) {
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_maintenance')) {
             return true;
         }
 
-        // Fallback to legacy organization_id
-        return $user->organization_id === $maintenance->organization_id;
+        // Only maintenance creators can delete their own maintenance (team members cannot delete)
+        return $maintenance->created_by === $user->id;
     }
 
     /**
-     * Check if user has specific role
+     * Determine whether the user can update the maintenance status.
      */
-    protected function hasRole(User $user, array $roles): bool
+    public function updateStatus(User $user, Maintenance $maintenance): bool
     {
-        // Check current role from organization context
-        if (isset($user->current_role) && in_array($user->current_role, $roles)) {
-            return true;
-        }
-
-        // Fallback to legacy role
-        return in_array($user->role, $roles);
+        // Same as update permission
+        return $this->update($user, $maintenance);
     }
 
     /**
-     * Check if user has specific permission
+     * Get current organization from user context
      */
-    protected function hasPermission(User $user, string $permission): bool
+    protected function getCurrentOrganization(User $user)
     {
-        if (isset($user->current_permissions) && 
-            isset($user->current_permissions[$permission]) && 
-            $user->current_permissions[$permission]) {
-            return true;
+        // Try to get from app container (set by middleware)
+        try {
+            return app('current_organization');
+        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+            // Fallback to user's first organization
+            return $user->organizations()->first() ?? 
+                   ($user->organization_id ? \App\Models\Organization::find($user->organization_id) : null);
         }
-
-        return false;
-    }
-
-    /**
-     * Check if user can manage maintenance's service
-     */
-    protected function canManageMaintenanceService(User $user, Maintenance $maintenance): bool
-    {
-        // If no service specified, allow team leads
-        if (!$maintenance->service_id) {
-            return true;
-        }
-
-        // Check if user's teams manage the maintenance's service
-        $userTeamIds = $user->teams->pluck('id');
-        $serviceTeamId = $maintenance->service->team_id ?? null;
-
-        return $serviceTeamId && $userTeamIds->contains($serviceTeamId);
     }
 } 

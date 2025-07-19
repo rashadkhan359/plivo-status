@@ -9,6 +9,7 @@ import { AlertTriangle, CheckCircle, Info, ShieldAlert, Zap, Edit, Trash2, Messa
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface Props {
     incidents: {
@@ -36,8 +37,9 @@ const severityColors = {
     critical: 'text-red-600 bg-red-50 border-red-200',
 };
 
-export default function IncidentIndex({ incidents, canCreate }: PageProps<Props>) {
+export default function IncidentIndex({ incidents }: PageProps<Props>) {
     const toast = useToast();
+    const permissions = usePermissions();
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [incidentToDelete, setIncidentToDelete] = React.useState<Incident | null>(null);
     const [deleting, setDeleting] = React.useState(false);
@@ -93,7 +95,7 @@ export default function IncidentIndex({ incidents, canCreate }: PageProps<Props>
                             <h1 className="text-3xl font-bold">Incidents</h1>
                             <p className="text-muted-foreground mt-2">Track and manage service incidents</p>
                         </div>
-                        {canCreate && (
+                        {permissions.canCreateIncident() && (
                             <Link href="/incidents/create">
                                 <Button className="flex items-center gap-2">
                                     <Plus className="h-4 w-4" />
@@ -109,7 +111,7 @@ export default function IncidentIndex({ incidents, canCreate }: PageProps<Props>
                             <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-semibold mb-2">No incidents found</h3>
                             <p className="text-muted-foreground mb-6">All systems are running smoothly</p>
-                            {canCreate && (
+                            {permissions.canCreateIncident() && (
                                 <Link href="/incidents/create">
                                     <Button>Report an incident</Button>
                                 </Link>

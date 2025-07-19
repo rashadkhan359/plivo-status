@@ -13,6 +13,7 @@ import { Organization } from '@/types/organization';
 import { User } from '@/types/models';
 import AppLayout from '@/layouts/app-layout';
 import RolePermissionManager from '@/components/role-permission-manager';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface OrganizationTeamProps {
     organization: Organization;
@@ -30,8 +31,12 @@ export default function OrganizationTeam({
     rolePermissions
 }: OrganizationTeamProps) {
     const toast = useToast();
-    console.log(rolePermissions);
-    console.log(members);
+    const permissions = usePermissions();
+    
+    // Debug: Check permissions
+    console.log('Current User Role:', currentUser.role);
+    console.log('Organization Permissions:', permissions.permissions.organization);
+    console.log('Can Manage Organization:', permissions.canManageOrganization());
     
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
@@ -211,48 +216,29 @@ export default function OrganizationTeam({
                         </CardContent>
                     </Card>
 
-                    {currentUser.role === 'owner' && (
+                    {true && (
                         <RolePermissionManager
                         type="organization"
                         entityId={organization.id}
                         roles={[
                             {
                                 role: 'owner',
-                                permissions: rolePermissions.owner || {
-                                    manage_organization: true,
-                                    manage_users: true,
-                                    manage_teams: true,
-                                    manage_services: true,
-                                    manage_incidents: true,
-                                    manage_maintenance: true,
-                                    view_analytics: true,
-                                },
+                                permissions: rolePermissions.owner || {},
                                 usersCount: members.data.filter((m: User) => m.role === 'owner').length,
                             },
                             {
                                 role: 'admin',
-                                permissions: rolePermissions.admin || {
-                                    manage_organization: true,
-                                    manage_users: true,
-                                    manage_teams: true,
-                                    manage_services: true,
-                                    manage_incidents: true,
-                                    manage_maintenance: true,
-                                    view_analytics: true,
-                                },
+                                permissions: rolePermissions.admin || {},
                                 usersCount: members.data.filter((m: User) => m.role === 'admin').length,
                             },
                             {
+                                role: 'team_lead',
+                                permissions: rolePermissions.team_lead || {},
+                                usersCount: members.data.filter((m: User) => m.role === 'team_lead').length,
+                            },
+                            {
                                 role: 'member',
-                                permissions: rolePermissions.member || {
-                                    manage_organization: false,
-                                    manage_users: false,
-                                    manage_teams: false,
-                                    manage_services: false,
-                                    manage_incidents: true,
-                                    manage_maintenance: false,
-                                    view_analytics: false,
-                                },
+                                permissions: rolePermissions.member || {},
                                 usersCount: members.data.filter((m: User) => m.role === 'member').length,
                             },
                         ]}
@@ -261,8 +247,6 @@ export default function OrganizationTeam({
                                 await router.patch(route('organization.permissions'), {
                                     role,
                                     permissions,
-                                }, {
-                                    preserveScroll: true,
                                 });
                                 toast.success('Role permissions updated successfully!');
                             } catch (error) {

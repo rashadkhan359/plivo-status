@@ -14,14 +14,42 @@ export interface Auth {
     };
     currentRole?: 'system_admin' | 'owner' | 'admin' | 'team_lead' | 'member';
     currentPermissions?: {
-        manage_organization?: boolean;
-        manage_users?: boolean;
-        manage_teams?: boolean;
-        manage_services?: boolean;
-        manage_incidents?: boolean;
-        manage_maintenance?: boolean;
-        view_analytics?: boolean;
-        system_admin?: boolean;
+        organization: {
+            manage_organization?: boolean;
+            manage_users?: boolean;
+            manage_teams?: boolean;
+            manage_services?: boolean;
+            manage_incidents?: boolean;
+            manage_maintenance?: boolean;
+            view_analytics?: boolean;
+            system_admin?: boolean;
+        },
+        resources: {
+            incidents: {
+                can_create: boolean;
+                can_view: boolean;
+                can_update: boolean;
+                can_delete: boolean;
+            },
+            services: {
+                can_create: boolean;
+                can_view: boolean;
+                can_update: boolean;
+                can_delete: boolean;
+            },
+            maintenances: {
+                can_create: boolean;
+                can_view: boolean;
+                can_update: boolean;
+                can_delete: boolean;
+            },
+            teams: {
+                can_create: boolean;
+                can_view: boolean;
+                can_update: boolean;
+                can_delete: boolean;
+            },
+        },
     };
 }
 
@@ -65,6 +93,7 @@ export interface User {
     email: string;
     email_verified_at?: string;
     avatar?: string;
+    is_system_admin?: boolean;
     created_at: string;
     updated_at: string;
 }

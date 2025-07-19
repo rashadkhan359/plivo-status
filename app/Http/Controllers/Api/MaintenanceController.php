@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\MaintenanceResource;
 use App\Events\MaintenanceScheduled;
+use App\Events\MaintenanceUpdated;
+use App\Events\MaintenanceStarted;
+use App\Events\MaintenanceCompleted;
 use Illuminate\Validation\Rules\Enum;
 
 class MaintenanceController extends Controller

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Service;
 use App\Models\Incident;
 use App\Models\Maintenance;
+use App\Models\Team;
 use Illuminate\Http\Request;
 
 class Controller extends BaseController
@@ -151,27 +152,17 @@ class Controller extends BaseController
     {
         // If no organization, return empty query
         if (!$organization) {
-            return \App\Models\Service::whereRaw('1 = 0'); // Return empty query builder
+            return Service::whereRaw('1 = 0'); // Return empty query builder
         }
         
-        $query = $organization->services();
+        $permissionService = app(\App\Services\PermissionService::class);
+        $accessibleServices = $permissionService->getUserAccessibleServices($user, $organization);
         
-        // Get user's role in the organization
-        $userRole = $this->getCurrentRole();
+        // Convert collection to query builder for consistency
+        $serviceIds = $accessibleServices->pluck('id')->toArray();
         
-        if ($userRole === 'owner' || $userRole === 'admin' || $user->isSystemAdmin()) {
-            // Owners, admins, and system admins see all services in their organization
-            return $query->with(['team', 'incidents']);
-        }
-        
-        // Members see services based on team memberships and visibility
-        $userTeamIds = $user->teams()->where('organization_id', $organization->id)->pluck('teams.id');
-        
-        return $query->where(function ($q) use ($userTeamIds) {
-            $q->where('visibility', 'public')
-              ->orWhereIn('team_id', $userTeamIds)
-              ->orWhereNull('team_id'); // Unassigned services are visible to all
-        })->with(['team', 'incidents']);
+        return Service::whereIn('id', $serviceIds)
+            ->with(['team', 'incidents']);
     }
 
     /**
@@ -181,7 +172,7 @@ class Controller extends BaseController
     {
         // If no organization, return empty query
         if (!$organization) {
-            return \App\Models\Incident::whereRaw('1 = 0'); // Return empty query builder
+            return Incident::whereRaw('1 = 0'); // Return empty query builder
         }
         
         $query = $organization->incidents();
@@ -215,7 +206,7 @@ class Controller extends BaseController
     {
         // If no organization, return empty query
         if (!$organization) {
-            return \App\Models\Maintenance::whereRaw('1 = 0'); // Return empty query builder
+            return Maintenance::whereRaw('1 = 0'); // Return empty query builder
         }
         
         $query = $organization->maintenances();
@@ -266,7 +257,7 @@ class Controller extends BaseController
         
         $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
         
-        $team = \App\Models\Team::where('id', $teamId)
+        $team = Team::where('id', $teamId)
             ->where('organization_id', $organizationId)
             ->first();
             

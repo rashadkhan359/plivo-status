@@ -1,12 +1,13 @@
 import { ServiceList } from '../components/service-list';
 import { IncidentList } from '../components/incident-list';
 import { MaintenanceList } from '../components/maintenance-list';
+import { OrganizationUptimeSummary, ServiceUptimeList } from '@/components/uptime-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Service } from '@/types/service';
 import { Incident } from '@/types/incident';
 import { Maintenance } from '@/types/maintenance';
-import { LayoutGrid, Wrench, AlertTriangle, Calendar } from 'lucide-react';
+import { LayoutGrid, Wrench, AlertTriangle, Calendar, TrendingUp } from 'lucide-react';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { IncidentUpdate } from '@/types/incident-update';
@@ -21,9 +22,19 @@ interface DashboardProps {
     incidentsCount: number;
     maintenancesCount: number;
   };
+  uptimeMetrics?: {
+    organizationUptime: number | null;
+    serviceUptimes: Array<{
+      service_id: number;
+      service_name: string;
+      uptime_percentage: number;
+      status: string;
+    }> | null;
+    canViewMetrics: boolean;
+  };
 }
 
-export default function Dashboard({ services, incidents, incidentUpdates, maintenances, stats }: DashboardProps) {
+export default function Dashboard({ services, incidents, incidentUpdates, maintenances, stats, uptimeMetrics }: DashboardProps) {
   const { props } = usePage<SharedData>();
   const organization = props.auth?.currentOrganization;
   
@@ -37,7 +48,7 @@ export default function Dashboard({ services, incidents, incidentUpdates, mainte
         </div>
         
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Services</CardTitle>
@@ -74,7 +85,44 @@ export default function Dashboard({ services, incidents, incidentUpdates, mainte
               </p>
             </CardContent>
           </Card>
+          {uptimeMetrics?.canViewMetrics && uptimeMetrics.organizationUptime !== null && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Average Uptime</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{uptimeMetrics.organizationUptime}%</div>
+                <p className="text-xs text-muted-foreground">
+                  Last 30 days average
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {/* Uptime Metrics for Admin/Owner Users */}
+        {uptimeMetrics?.canViewMetrics && uptimeMetrics.serviceUptimes && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Uptime Analytics</h2>
+              <p className="text-muted-foreground">Service availability metrics for the last 30 days</p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {uptimeMetrics.organizationUptime !== null && (
+                <OrganizationUptimeSummary
+                  averageUptime={uptimeMetrics.organizationUptime}
+                  period="30d"
+                  serviceCount={stats.servicesCount}
+                />
+              )}
+              <ServiceUptimeList
+                services={uptimeMetrics.serviceUptimes}
+                period="30d"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Content Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

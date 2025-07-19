@@ -13,6 +13,9 @@ use App\Enums\MaintenanceStatus;
 use App\Http\Resources\MaintenanceResource;
 use App\Http\Resources\ServiceResource;
 use App\Events\MaintenanceScheduled;
+use App\Events\MaintenanceUpdated;
+use App\Events\MaintenanceStarted;
+use App\Events\MaintenanceCompleted;
 use Illuminate\Validation\Rules\Enum;
 
 class MaintenanceController extends Controller
@@ -35,7 +38,6 @@ class MaintenanceController extends Controller
 
         return Inertia::render('maintenances/index', [
             'maintenances' => MaintenanceResource::collection($maintenances),
-            'canCreate' => $user->can('create', Maintenance::class),
         ]);
     }
 
@@ -151,7 +153,23 @@ class MaintenanceController extends Controller
                 ->firstOrFail();
         }
         
+        $oldStatus = $maintenance->status;
         $maintenance->update($validated);
+        $maintenance->refresh(); // Refresh to get updated values
+        
+        // Dispatch appropriate events based on status changes
+        if ($oldStatus !== $maintenance->status) {
+            switch ($maintenance->status) {
+                case MaintenanceStatus::IN_PROGRESS:
+                    event(new MaintenanceStarted($maintenance));
+                    break;
+                case MaintenanceStatus::COMPLETED:
+                    event(new MaintenanceCompleted($maintenance));
+                    break;
+            }
+        }
+        
+        event(new MaintenanceUpdated($maintenance));
         
         return redirect()->route('maintenances.index')->with('success', 'Maintenance updated successfully.');
     }
@@ -178,6 +196,9 @@ class MaintenanceController extends Controller
             'actual_start' => now(),
         ]);
         
+        event(new MaintenanceStarted($maintenance));
+        event(new MaintenanceUpdated($maintenance));
+        
         return redirect()->route('maintenances.index')->with('success', 'Maintenance started successfully.');
     }
 
@@ -192,6 +213,9 @@ class MaintenanceController extends Controller
             'status' => MaintenanceStatus::COMPLETED,
             'actual_end' => now(),
         ]);
+        
+        event(new MaintenanceCompleted($maintenance));
+        event(new MaintenanceUpdated($maintenance));
         
         return redirect()->route('maintenances.index')->with('success', 'Maintenance completed successfully.');
     }

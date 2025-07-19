@@ -7,6 +7,9 @@ import { initializeTheme } from './hooks/use-appearance';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 import { Toaster } from './components/ui/toaster';
+import { router } from '@inertiajs/react';
+import { toast } from 'sonner';
+import React from 'react';
 
 // Configure Pusher
 // @ts-ignore
@@ -25,51 +28,30 @@ const echo = new Echo({
     enableLogging: import.meta.env.DEV,
 });
 
-// Add connection debugging
-if (import.meta.env.DEV) {
-    console.log('Echo configuration:', {
-        key: import.meta.env.VITE_PUSHER_APP_KEY,
-        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-        isDev: import.meta.env.DEV,
-        protocol: window.location.protocol,
-    });
-    
-    console.log('Echo object created:', {
-        hasConnector: !!echo.connector,
-        connectorType: echo.connector?.constructor?.name,
-        hasPusher: !!(echo.connector as any)?.pusher,
-    });
-}
-
 // Make Echo available globally for useRealtime hook and direct usage
 // @ts-ignore
 window.Echo = echo;
 
-// Add a small delay to ensure Echo is fully initialized
-setTimeout(() => {
-    if (import.meta.env.DEV) {
-        console.log('Echo after initialization:', {
-            hasConnector: !!window.Echo?.connector,
-            hasPusher: !!(window.Echo?.connector as any)?.pusher,
-            pusherState: (window.Echo?.connector as any)?.pusher?.connection?.state,
-        });
-        
-        // Test channel creation
-        if (window.Echo) {
-            const testChannel = window.Echo.channel('test');
-            console.log('Test channel created:', {
-                name: testChannel.name,
-                subscribed: testChannel.subscribed,
-            });
-        }
-    }
-}, 100);
-
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
+// Set up global error handling
+router.on('error', (event) => {
+    const { errors } = event.detail;
+    
+    // Handle 403 errors specifically
+    if (errors && Object.keys(errors).length === 1 && errors['403']) {
+        // Use Sonner toast directly (no Inertia context needed)
+        toast.error(errors['403'] || 'You do not have permission to perform this action.');
+    }
+});
+
 createInertiaApp({
-    title: (title) => title ? `${title} - ${appName}` : title,
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    title: (title) => `${title} - ${appName}`,
+    resolve: (name) =>
+        resolvePageComponent(
+            `./pages/${name}.tsx`,
+            import.meta.glob('./pages/**/*.tsx'),
+        ),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
@@ -87,3 +69,5 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+

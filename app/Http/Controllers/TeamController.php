@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -33,7 +34,6 @@ class TeamController extends Controller
         
         return Inertia::render('teams/index', [
             'teams' => $teams,
-            'canCreate' => $user->can('create', Team::class),
         ]);
     }
 
@@ -94,10 +94,15 @@ class TeamController extends Controller
         // Get all users in the organization for member management
         $availableUsers = $organization ? $organization->users()->get() : collect();
         
+        // Get team role permissions
+        $permissionService = app(PermissionService::class);
+        $teamRolePermissions = $permissionService->getTeamRolePermissions($team);
+        
         return Inertia::render('teams/show', [
             'team' => $team,
             'canManageMembers' => $user->can('manageMembers', $team),
             'availableUsers' => $availableUsers,
+            'teamRolePermissions' => $teamRolePermissions,
         ]);
     }
 
@@ -198,7 +203,13 @@ class TeamController extends Controller
         }
         
         if (!$user->teams()->where('teams.id', $team->id)->exists()) {
-            $user->teams()->attach($team->id, ['role' => $validated['role']]);
+            $user->teams()->attach($team->id, [
+                'role' => $validated['role']
+            ]);
+            
+            // Assign default permissions for the role
+            $permissionService = app(PermissionService::class);
+            $permissionService->assignDefaultTeamPermissions($user, $team, $validated['role']);
         }
         
         return redirect()->back()->with('success', 'Member added to team.');
@@ -227,8 +238,49 @@ class TeamController extends Controller
             'role' => 'required|in:member,lead',
         ]);
         
-        $user->teams()->updateExistingPivot($team->id, ['role' => $validated['role']]);
+        $user->teams()->updateExistingPivot($team->id, [
+            'role' => $validated['role']
+        ]);
+        
+        // Update permissions for the new role
+        $permissionService = app(PermissionService::class);
+        $permissionService->assignDefaultTeamPermissions($user, $team, $validated['role']);
         
         return redirect()->back()->with('success', 'Member role updated.');
     }
+
+    /**
+     * Get available permissions for teams or organizations
+     */
+    public function getAvailablePermissions(Request $request)
+    {
+        $permissionService = app(PermissionService::class);
+        $scope = $request->get('scope', 'team');
+        $permissions = $permissionService->getAvailablePermissions($scope);
+        
+        return response()->json([
+            'permissions' => $permissions,
+        ]);
+    }
+
+    /**
+     * Update role permissions for the team.
+     */
+    public function updateRolePermissions(Request $request, Team $team)
+    {
+        $this->authorize('manageMembers', $team);
+        
+        $validated = $request->validate([
+            'role' => 'required|string|in:lead,member',
+            'permissions' => 'required|array',
+            'permissions.*' => 'boolean',
+        ]);
+
+        $permissionService = app(PermissionService::class);
+        $permissionService->updateTeamRolePermissions($team, $validated['role'], $validated['permissions']);
+
+        return back()->with('success', 'Team role permissions updated successfully.');
+    }
+
+
 } 

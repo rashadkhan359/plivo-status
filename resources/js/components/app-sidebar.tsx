@@ -25,7 +25,7 @@ export function AppSidebar() {
     ];
 
     // Add team management for users with manage_teams permission
-    if (currentPermissions?.manage_teams) {
+    if (currentPermissions?.organization?.manage_teams) {
         navItems.push({ title: 'Teams', href: '/teams', icon: Users });
     }
 
@@ -35,7 +35,7 @@ export function AppSidebar() {
     }
 
     // Settings for users with organization management permissions or higher roles
-    if (currentPermissions?.manage_organization || currentRole === 'owner' || currentRole === 'admin' || currentRole === 'system_admin') {
+    if (currentPermissions?.organization?.manage_organization || currentRole === 'owner' || currentRole === 'admin' || currentRole === 'system_admin') {
         navItems.push({ title: 'Settings', href: '/settings', icon: Settings });
     }
 

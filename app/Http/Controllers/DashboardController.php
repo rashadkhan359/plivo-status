@@ -12,6 +12,8 @@ use App\Models\Service;
 use App\Models\Incident;
 use App\Models\IncidentUpdate;
 use App\Models\Maintenance;
+use App\Services\UptimeMetricsService;
+use App\Services\PermissionService;
 
 class DashboardController extends Controller
 {
@@ -22,6 +24,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $organization = $this->getCurrentOrganization();
+        $permissionService = app(PermissionService::class);
 
         // All users (including system admins) see data from their organization only
         $services = Service::forOrganization($organization->id)->with('incidents')->get();
@@ -33,6 +36,25 @@ class DashboardController extends Controller
             ->get();
         $maintenances = Maintenance::forOrganization($organization->id)->with('service')->latest()->take(5)->get();
 
+        // Get uptime metrics for admin/owner users
+        $uptimeMetrics = null;
+        $organizationUptime = null;
+        $serviceUptimes = null;
+        
+        // Check if user can view analytics (admin/owner level access)
+        if ($user->isSystemAdmin() || 
+            $permissionService->userHasOrganizationPermission($user, $organization, 'view_analytics') ||
+            $permissionService->userHasOrganizationPermission($user, $organization, 'manage_organization')) {
+            
+            $uptimeService = app(UptimeMetricsService::class);
+            
+            // Get organization-wide uptime average
+            $organizationUptime = $uptimeService->getOrganizationUptimeAverage($services, '30d');
+            
+            // Get service-level uptime metrics
+            $serviceUptimes = $uptimeService->getBulkUptimeMetrics($services, '30d');
+        }
+
         return Inertia::render('dashboard', [
             'services' => \App\Http\Resources\ServiceResource::collection($services),
             'incidents' => \App\Http\Resources\IncidentResource::collection($incidents),
@@ -42,6 +64,11 @@ class DashboardController extends Controller
                 'servicesCount' => $services->count(),
                 'incidentsCount' => Incident::forOrganization($organization->id)->count(),
                 'maintenancesCount' => Maintenance::forOrganization($organization->id)->count(),
+            ],
+            'uptimeMetrics' => [
+                'organizationUptime' => $organizationUptime,
+                'serviceUptimes' => $serviceUptimes,
+                'canViewMetrics' => !is_null($organizationUptime),
             ],
         ]);
     }

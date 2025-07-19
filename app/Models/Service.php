@@ -98,6 +98,14 @@ class Service extends Model
     }
 
     /**
+     * Get the status logs for the service.
+     */
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(\App\Models\ServiceStatusLog::class);
+    }
+
+    /**
      * Scope a query to only include services of a given organization.
      */
     public function scopeForOrganization($query, $organizationId)

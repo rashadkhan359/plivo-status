@@ -10,6 +10,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Edit, Trash2, Zap, Plus, Wrench, Users, EyeOff } from 'lucide-react';
 import React from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 import { SharedData } from '@/types';
 
 interface Props {
@@ -25,10 +26,9 @@ interface Props {
     canCreate: boolean;
 }
 
-export default function ServiceIndex({ services, teams, canCreate }: PageProps<Props>) {
+export default function ServiceIndex({ services, teams }: PageProps<Props>) {
     const toast = useToast();
-    const { props } = usePage<SharedData>();
-    const { currentPermissions } = props.auth;
+    const permissions = usePermissions();
     
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(null);
@@ -95,7 +95,7 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                             <h1 className="text-3xl font-bold">Services</h1>
                             <p className="text-muted-foreground mt-2">Monitor and manage your service status</p>
                         </div>
-                        {canCreate && (
+                        {permissions.canCreateService() && (
                             <Link href="/services/create">
                                 <Button className="flex items-center gap-2">
                                     <Plus className="h-4 w-4" />
@@ -153,7 +153,7 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                                     : 'Try selecting a different team or create a new service'
                                 }
                             </p>
-                            {canCreate && selectedTeam === 'all' && (
+                            {permissions.canCreateService() && selectedTeam === 'all' && (
                                 <Link href="/services/create">
                                     <Button>Create your first service</Button>
                                 </Link>
@@ -196,7 +196,7 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                                         </div>
                                         
                                                                                 <div className="flex gap-2 mt-auto pt-4">
-                                            {currentPermissions?.manage_services && (
+                                            {permissions.canManageService(service) && (
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
@@ -207,14 +207,14 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                                                     Update Status
                                                 </Button>
                                             )}
-                                            {currentPermissions?.manage_services && (
+                                            {permissions.canManageService(service) && (
                                                 <Link href={`/services/${service.id}/edit`}>
                                                     <Button size="sm" variant="outline">
                                                         <Edit className="h-4 w-4" />
                                                     </Button>
                                                 </Link>
                                             )}
-                                            {currentPermissions?.manage_services && (
+                                            {permissions.canManageService(service) && (
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 

@@ -4,18 +4,32 @@ namespace App\Policies;
 
 use App\Models\Service;
 use App\Models\User;
+use App\Services\PermissionService;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ServicePolicy
 {
     use HandlesAuthorization;
 
+    protected PermissionService $permissionService;
+
+    public function __construct(PermissionService $permissionService)
+    {
+        $this->permissionService = $permissionService;
+    }
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->hasOrganizationAccess($user);
+        // System admin can view all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // User must belong to an organization
+        return $user->organizations()->exists() || !is_null($user->organization_id);
     }
 
     /**
@@ -23,19 +37,8 @@ class ServicePolicy
      */
     public function view(User $user, Service $service): bool
     {
-        // Check if user belongs to the same organization
-        if (!$this->belongsToSameOrganization($user, $service)) {
-            return false;
-        }
-
-        // Check service visibility
-        if ($service->visibility === 'private') {
-            // Private services can only be viewed by team members or admins
-            return $this->isTeamMemberOrAdmin($user, $service);
-        }
-
-        // Public services can be viewed by any organization member
-        return true;
+        // Use PermissionService to check access
+        return $this->permissionService->userCanAccessService($user, $service);
     }
 
     /**
@@ -43,8 +46,26 @@ class ServicePolicy
      */
     public function create(User $user): bool
     {
-        return $this->hasPermission($user, 'manage_services') || 
-               $this->hasRole($user, ['owner', 'admin', 'team_lead']);
+        // System admin can create
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        $organization = $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
+
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_services')) {
+            return true;
+        }
+
+        // Check if user has team-level permission in any team
+        $accessibleTeams = $this->permissionService->getUserAccessibleTeams($user, $organization);
+        return $accessibleTeams->some(function ($team) use ($user) {
+            return $this->permissionService->userHasTeamPermission($user, $team, 'manage_services');
+        });
     }
 
     /**
@@ -52,23 +73,32 @@ class ServicePolicy
      */
     public function update(User $user, Service $service): bool
     {
-        if (!$this->belongsToSameOrganization($user, $service)) {
+        // System admin can update all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // Must have access to the service first
+        if (!$this->permissionService->userCanAccessService($user, $service)) {
             return false;
         }
 
-        // Check if user has manage_services permission
-        if ($this->hasPermission($user, 'manage_services')) {
+        $organization = $service->organization ?? $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
+
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_services')) {
             return true;
         }
 
-        // Owners and admins can update any service
-        if ($this->hasRole($user, ['owner', 'admin'])) {
-            return true;
-        }
-
-        // Team leads can update services in their team
-        if ($this->hasRole($user, ['team_lead']) && $this->isTeamMemberOrAdmin($user, $service)) {
-            return true;
+        // Check team-level permission
+        if ($service->team_id) {
+            $team = $service->team;
+            if ($team && $this->permissionService->userHasTeamPermission($user, $team, 'manage_services')) {
+                return true;
+            }
         }
 
         // Service creator can update their own service
@@ -80,86 +110,51 @@ class ServicePolicy
      */
     public function delete(User $user, Service $service): bool
     {
-        if (!$this->belongsToSameOrganization($user, $service)) {
+        // System admin can delete all
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+
+        // Must have access to the service first
+        if (!$this->permissionService->userCanAccessService($user, $service)) {
             return false;
         }
 
-        // Check if user has manage_services permission
-        if ($this->hasPermission($user, 'manage_services')) {
+        $organization = $service->organization ?? $this->getCurrentOrganization($user);
+        if (!$organization) {
+            return false;
+        }
+
+        // Check organization-level permission
+        if ($this->permissionService->userHasOrganizationPermission($user, $organization, 'manage_services')) {
             return true;
         }
 
-        // Only owners, admins, and service creators can delete
-        return $this->hasRole($user, ['owner', 'admin']) || 
-               $service->created_by === $user->id;
+        // Only service creators can delete their own services (team leads cannot delete)
+        return $service->created_by === $user->id;
     }
 
     /**
-     * Check if user has organization access
+     * Determine whether the user can update the service status.
      */
-    protected function hasOrganizationAccess(User $user): bool
+    public function updateStatus(User $user, Service $service): bool
     {
-        return $user->organizations()->wherePivot('is_active', true)->exists() || 
-               !is_null($user->organization_id);
+        // Same as update permission
+        return $this->update($user, $service);
     }
 
     /**
-     * Check if user belongs to same organization as service
+     * Get current organization from user context
      */
-    protected function belongsToSameOrganization(User $user, Service $service): bool
+    protected function getCurrentOrganization(User $user)
     {
-        // Check new pivot table
-        if ($user->organizations()->where('organizations.id', $service->organization_id)->exists()) {
-            return true;
+        // Try to get from app container (set by middleware)
+        try {
+            return app('current_organization');
+        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+            // Fallback to user's first organization
+            return $user->organizations()->first() ?? 
+                   ($user->organization_id ? \App\Models\Organization::find($user->organization_id) : null);
         }
-
-        // Fallback to legacy organization_id
-        return $user->organization_id === $service->organization_id;
-    }
-
-    /**
-     * Check if user has specific role
-     */
-    protected function hasRole(User $user, array $roles): bool
-    {
-        // Check current role from organization context
-        if (isset($user->current_role) && in_array($user->current_role, $roles)) {
-            return true;
-        }
-
-        // Fallback to legacy role
-        return in_array($user->role, $roles);
-    }
-
-    /**
-     * Check if user has specific permission
-     */
-    protected function hasPermission(User $user, string $permission): bool
-    {
-        if (isset($user->current_permissions) && 
-            isset($user->current_permissions[$permission]) && 
-            $user->current_permissions[$permission]) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Check if user is team member or admin for service
-     */
-    protected function isTeamMemberOrAdmin(User $user, Service $service): bool
-    {
-        // Admins and owners can access all services
-        if ($this->hasRole($user, ['owner', 'admin'])) {
-            return true;
-        }
-
-        // Check if user is in the service's team
-        if ($service->team_id) {
-            return $user->teams()->where('teams.id', $service->team_id)->exists();
-        }
-
-        return false;
     }
 }

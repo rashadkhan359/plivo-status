@@ -97,8 +97,9 @@ class User extends Authenticatable
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class)
-                    ->withPivot('role')
-                    ->withTimestamps();
+                    ->withPivot('role', 'permissions')
+                    ->withTimestamps()
+                    ->using(TeamUser::class);
     }
 
     /**
@@ -267,7 +268,7 @@ class User extends Authenticatable
      */
     public function isSystemAdmin(): bool
     {
-        return $this->is_system_admin;
+        return (bool) $this->is_system_admin;
     }
 
     /**

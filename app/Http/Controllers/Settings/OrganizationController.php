@@ -7,6 +7,7 @@ use App\Http\Resources\OrganizationResource;
 use App\Models\User;
 use App\Models\Invitation;
 use App\Notifications\TeamInvitation;
+use App\Services\PermissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,33 +80,29 @@ class OrganizationController extends Controller
                 return $member;
             });
 
-        // Get role permissions from pivot table
-        $rolePermissions = [];
-        $roles = ['owner', 'admin', 'member'];
+        // Get role permissions with custom permissions support
+        $permissionService = app(PermissionService::class);
+        $rolePermissionsData = $permissionService->getOrganizationRolePermissionsWithCustom($organization);
         
-        foreach ($roles as $role) {
-            $roleUsers = $organization->users()->wherePivot('role', $role)->get();
-            if ($roleUsers->isNotEmpty()) {
-                $permissionsData = $roleUsers->first()->pivot->permissions ?? '[]';
-                $permissions = is_string($permissionsData) ? json_decode($permissionsData, true) : $permissionsData;
-                $permissions = is_array($permissions) ? $permissions : [];
-                
-                $rolePermissions[$role] = [
-                    'manage_organization' => in_array('manage_organization', $permissions),
-                    'manage_users' => in_array('manage_users', $permissions),
-                    'manage_teams' => in_array('manage_teams', $permissions),
-                    'manage_services' => in_array('manage_services', $permissions),
-                    'manage_incidents' => in_array('manage_incidents', $permissions),
-                    'manage_maintenance' => in_array('manage_maintenance', $permissions),
-                    'view_analytics' => in_array('view_analytics', $permissions),
-                ];
-            }
+        $rolePermissions = [];
+        foreach ($rolePermissionsData as $roleData) {
+            $rolePermissions[$roleData['role']] = $roleData['permissions'];
+        }
+
+        // Get current user with role from pivot table
+        $currentUserWithRole = $organization->users()
+            ->where('users.id', $user->id)
+            ->withPivot('role')
+            ->first();
+        
+        if ($currentUserWithRole) {
+            $currentUserWithRole->role = $currentUserWithRole->pivot->role;
         }
 
         return Inertia::render('settings/organization-team', [
             'organization' => new OrganizationResource($organization),
             'members' => \App\Http\Resources\UserResource::collection($members),
-            'currentUser' => new \App\Http\Resources\UserResource($user),
+            'currentUser' => new \App\Http\Resources\UserResource($currentUserWithRole ?: $user),
             'rolePermissions' => $rolePermissions,
         ]);
     }
@@ -213,6 +210,10 @@ class OrganizationController extends Controller
             'role' => $validated['role']
         ]);
 
+        // Update permissions for the new role
+        $permissionService = app(PermissionService::class);
+        $permissionService->assignDefaultOrganizationPermissions($member, $organization, $validated['role']);
+
         return back()->with('success', 'Member role updated successfully.');
     }
 
@@ -263,25 +264,46 @@ class OrganizationController extends Controller
         $this->authorize('manageUsers', $organization);
 
         $validated = $request->validate([
-            'role' => 'required|string|in:owner,admin,member',
+            'role' => 'required|string|in:owner,admin,team_lead,member',
             'permissions' => 'required|array',
             'permissions.*' => 'boolean',
         ]);
 
+        // Get user's role from the pivot table
+        $userOrganization = $organization->users()
+            ->where('users.id', $user->id)
+            ->withPivot('role')
+            ->first();
+
+        if (!$userOrganization) {
+            return back()->withErrors(['role' => 'User is not a member of this organization.']);
+        }
+
         // Only owners can update role permissions
-        if (!in_array($user->role, ['owner'])) {
+        if ($userOrganization->pivot->role !== 'owner') {
             return back()->withErrors(['role' => 'Only organization owners can update role permissions.']);
         }
 
-        // Update permissions for all users with this role in the organization
-        $permissionKeys = array_keys(array_filter($validated['permissions']));
+        // Update organization role permissions
+        $permissionService = app(PermissionService::class);
+        $permissionService->updateOrganizationRolePermissions($organization, $validated['role'], $validated['permissions']);
         
-        $organization->users()
-            ->wherePivot('role', $validated['role'])
-            ->updateExistingPivot($organization->users()->pluck('users.id')->toArray(), [
-                'permissions' => json_encode($permissionKeys)
-            ]);
-
         return back()->with('success', 'Role permissions updated successfully.');
+    }
+
+    /**
+     * Get permissions for a given role (same as HandleInertiaRequests)
+     */
+    private function getPermissionsForRole(string $role): array
+    {
+        return \App\Services\PermissionService::ORGANIZATION_ROLE_PERMISSIONS[$role] ?? [
+            'manage_organization' => false,
+            'manage_users' => false,
+            'manage_teams' => false,
+            'manage_services' => false,
+            'manage_incidents' => false,
+            'manage_maintenance' => false,
+            'view_analytics' => false,
+        ];
     }
 } 

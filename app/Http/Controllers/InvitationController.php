@@ -23,15 +23,41 @@ class InvitationController extends Controller
         $invitation = Invitation::where('token', $token)->first();
 
         if (!$invitation) {
-            abort(404, 'Invitation not found.');
+            return Inertia::render('auth/invitation-error', [
+                'error' => 'not_found',
+                'message' => 'Invitation not found.',
+            ]);
         }
 
         if ($invitation->isExpired()) {
-            abort(410, 'This invitation has expired.');
+            return Inertia::render('auth/invitation-error', [
+                'error' => 'expired',
+                'message' => 'This invitation has expired.',
+                'invitation' => [
+                    'organization' => [
+                        'name' => $invitation->organization->name,
+                    ],
+                    'invited_by' => [
+                        'name' => $invitation->invitedBy->name,
+                    ],
+                    'expires_at' => $invitation->expires_at,
+                ],
+            ]);
         }
 
         if ($invitation->isAccepted()) {
-            abort(410, 'This invitation has already been accepted.');
+            return Inertia::render('auth/invitation-error', [
+                'error' => 'already_accepted',
+                'message' => 'This invitation has already been accepted.',
+                'invitation' => [
+                    'organization' => [
+                        'name' => $invitation->organization->name,
+                    ],
+                    'invited_by' => [
+                        'name' => $invitation->invitedBy->name,
+                    ],
+                ],
+            ]);
         }
 
         return Inertia::render('auth/accept-invitation', [
@@ -104,6 +130,10 @@ class InvitationController extends Controller
 
         // Add user to organization through pivot table
         $invitation->organization->addUser($user, $invitation->role, $invitation->invitedBy);
+        
+        // Assign default permissions for the role
+        $permissionService = app(\App\Services\PermissionService::class);
+        $permissionService->assignDefaultOrganizationPermissions($user, $invitation->organization, $invitation->role);
 
         // Mark invitation as accepted
         $invitation->update([

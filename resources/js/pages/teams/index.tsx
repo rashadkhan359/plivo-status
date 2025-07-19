@@ -8,6 +8,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Edit, Trash2, Plus, Users, Settings, UserPlus } from 'lucide-react';
 import React from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 interface Props {
     teams: {
@@ -21,8 +22,9 @@ interface Props {
     canCreate: boolean;
 }
 
-export default function TeamIndex({ teams, canCreate }: PageProps<Props>) {
+export default function TeamIndex({ teams }: PageProps<Props>) {
     const toast = useToast();
+    const permissions = usePermissions();
     
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [teamToDelete, setTeamToDelete] = React.useState<Team | null>(null);
@@ -70,7 +72,7 @@ export default function TeamIndex({ teams, canCreate }: PageProps<Props>) {
                             <h1 className="text-3xl font-bold">Teams</h1>
                             <p className="text-muted-foreground mt-2">Organize users and manage service responsibilities</p>
                         </div>
-                        {canCreate && (
+                        {permissions.canCreateTeam() && (
                             <Link href="/teams/create">
                                 <Button className="flex items-center gap-2">
                                     <Plus className="h-4 w-4" />
@@ -86,7 +88,7 @@ export default function TeamIndex({ teams, canCreate }: PageProps<Props>) {
                             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-semibold mb-2">No teams found</h3>
                             <p className="text-muted-foreground mb-6">Create teams to organize users and manage service responsibilities</p>
-                            {canCreate && (
+                            {permissions.canCreateTeam() && (
                                 <Link href="/teams/create">
                                     <Button>Create your first team</Button>
                                 </Link>

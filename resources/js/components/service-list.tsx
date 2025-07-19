@@ -3,7 +3,7 @@ import { ServiceCard } from '@/components/service-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Service } from '@/types/service';
 
-export function ServiceList({ initialServices, orgId, orgSlug }: { initialServices: Service[]; orgId?: string; orgSlug?: string }) {
+export function ServiceList({ initialServices, orgId, orgSlug, isPublic = false }: { initialServices: Service[]; orgId?: string; orgSlug?: string; isPublic?: boolean }) {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function ServiceList({ initialServices, orgId, orgSlug }: { initialServic
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {services.map((service) => (
-          <ServiceCard key={service.id} service={service} />
+          <ServiceCard key={service.id} service={service} isPublic={isPublic} />
         ))}
       </div>
     </div>

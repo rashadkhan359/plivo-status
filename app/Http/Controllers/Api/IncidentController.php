@@ -56,6 +56,10 @@ class IncidentController extends Controller
         // Attach services to incident
         $incident->services()->attach($validated['service_ids']);
         
+        // Update service statuses based on incident severity
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        $statusService->updateServiceStatusFromIncident($incident);
+        
         event(new IncidentCreated($incident));
         
         return new IncidentResource($incident->load('services'));

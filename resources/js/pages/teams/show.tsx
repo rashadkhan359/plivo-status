@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { Settings, Edit, Users } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,18 +9,26 @@ import AppLayout from '@/layouts/app-layout';
 import { Team, Service } from '@/types/service';
 import { User } from '@/types';
 import { TeamMemberManagement } from '@/components/team-member-management';
+import RolePermissionManager from '@/components/role-permission-manager';
 import React from 'react';
 
 interface TeamShowProps {
     team: Team & {
-        members: User[];
+        members: (User & { pivot: { role: 'member' | 'lead' } })[];
         services: Service[];
     };
     canManageMembers: boolean;
     availableUsers: User[];
+    teamRolePermissions?: Array<{
+        role: string;
+        permissions: Record<string, boolean>;
+        usersCount: number;
+    }>;
 }
 
-export default function TeamShow({ team, canManageMembers, availableUsers }: TeamShowProps) {
+export default function TeamShow({ team, canManageMembers, availableUsers, teamRolePermissions }: TeamShowProps) {
+    const toast = useToast();
+    
     const breadcrumbs = [
         { title: 'Settings', href: route('profile.edit') },
         { title: 'Organization', href: route('organization.edit') },
@@ -110,6 +119,33 @@ export default function TeamShow({ team, canManageMembers, availableUsers }: Tea
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Team Role Permissions */}
+                {canManageMembers && teamRolePermissions && (
+                    <RolePermissionManager
+                        type="team"
+                        entityId={team.id}
+                        roles={teamRolePermissions}
+                        onUpdatePermissions={async (role, permissions) => {
+                            return new Promise((resolve, reject) => {
+                                router.patch(`/teams/${team.id}/permissions`, {
+                                    role,
+                                    permissions,
+                                }, {
+                                    onSuccess: () => {
+                                        toast.success(`${role} permissions updated successfully!`);
+                                        resolve();
+                                    },
+                                    onError: (errors) => {
+                                        const errorMessage = Object.values(errors).flat().join(', ') || 'Failed to update permissions';
+                                        toast.error(errorMessage);
+                                        reject(new Error(errorMessage));
+                                    }
+                                });
+                            });
+                        }}
+                    />
+                )}
 
                 {/* Team Stats */}
                 <Card>

@@ -5,6 +5,7 @@ import { MaintenanceList } from '@/components/maintenance-list';
 import { IncidentTimeline } from '@/components/incident-timeline';
 import { StatusBadge } from '@/components/status-badge';
 import { RealtimeIndicator } from '@/components/realtime-indicator';
+import { PublicUptimeChart } from '@/components/public-uptime-chart';
 import { useRealtime } from '@/hooks/use-realtime';
 import { Service } from '@/types/service';
 import { Incident } from '@/types/incident';
@@ -13,6 +14,7 @@ import { IncidentUpdate } from '@/types/incident-update';
 import { Organization } from '@/types/organization';
 import { Head, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import Header from '@/layouts/home/header';
 
 function getOverallStatus(services: Service[]) {
   if (services.some((s) => s.status === 'major_outage')) return { status: 'major_outage', label: 'Major Outage' };
@@ -27,12 +29,25 @@ export default function PublicStatusPage({
     incidents,
     maintenances,
     updates = { data: [] },
+    uptimeMetrics = [],
+    chartData = {},
 }: {
     organization: Organization;
     services: { data: Service[] };
     incidents: { data: Incident[] };
     maintenances: { data: Maintenance[] };
     updates: { data: IncidentUpdate[] };
+    uptimeMetrics?: Array<{
+      service_id: number;
+      service_name: string;
+      uptime_percentage: number;
+      period: string;
+    }>;
+    chartData?: Record<number, Array<{
+      date: string;
+      uptime: number;
+      timestamp: string;
+    }>>;
 }) {
     const [serviceList, setServiceList] = useState<Service[]>(services.data);
     const [incidentList, setIncidentList] = useState<Incident[]>(incidents.data);
@@ -103,6 +118,24 @@ export default function PublicStatusPage({
       });
     });
     
+    channel.listen('.ServiceCreated', (data: { service: Service }) => {
+      console.log('ServiceCreated received:', data);
+      setServiceList((prev) => {
+        const updated = [data.service, ...prev];
+        console.log('Updated service list:', updated);
+        return updated;
+      });
+    });
+    
+    channel.listen('.ServiceUpdated', (data: { service: Service }) => {
+      console.log('ServiceUpdated received:', data);
+      setServiceList((prev) => {
+        const updated = prev.map((s) => (s.id === data.service.id ? data.service : s));
+        console.log('Updated service list:', updated);
+        return updated;
+      });
+    });
+    
     channel.listen('.IncidentCreated', (data: { incident: Incident }) => {
       console.log('IncidentCreated received:', data);
       setIncidentList((prev) => {
@@ -140,6 +173,33 @@ export default function PublicStatusPage({
       });
     });
     
+    channel.listen('.MaintenanceUpdated', (data: { maintenance: Maintenance }) => {
+      console.log('MaintenanceUpdated received:', data);
+      setMaintenanceList((prev) => {
+        const updated = prev.map((m) => (m.id === data.maintenance.id ? data.maintenance : m));
+        console.log('Updated maintenance list:', updated);
+        return updated;
+      });
+    });
+    
+    channel.listen('.MaintenanceStarted', (data: { maintenance: Maintenance }) => {
+      console.log('MaintenanceStarted received:', data);
+      setMaintenanceList((prev) => {
+        const updated = prev.map((m) => (m.id === data.maintenance.id ? data.maintenance : m));
+        console.log('Updated maintenance list:', updated);
+        return updated;
+      });
+    });
+    
+    channel.listen('.MaintenanceCompleted', (data: { maintenance: Maintenance }) => {
+      console.log('MaintenanceCompleted received:', data);
+      setMaintenanceList((prev) => {
+        const updated = prev.map((m) => (m.id === data.maintenance.id ? data.maintenance : m));
+        console.log('Updated maintenance list:', updated);
+        return updated;
+      });
+    });
+    
     channel.listen('.IncidentUpdateCreated', (data: { incident_update: any }) => {
       console.log('IncidentUpdateCreated received on public page:', data);
       // Transform and add the new update to the timeline
@@ -162,10 +222,15 @@ export default function PublicStatusPage({
       console.log('Cleaning up realtime subscriptions for:', organization.slug);
       // Clean up subscriptions
       channel.stopListening('.ServiceStatusChanged');
+      channel.stopListening('.ServiceCreated');
+      channel.stopListening('.ServiceUpdated');
       channel.stopListening('.IncidentCreated');
       channel.stopListening('.IncidentUpdated');
       channel.stopListening('.IncidentResolved');
       channel.stopListening('.MaintenanceScheduled');
+      channel.stopListening('.MaintenanceUpdated');
+      channel.stopListening('.MaintenanceStarted');
+      channel.stopListening('.MaintenanceCompleted');
       channel.stopListening('.IncidentUpdateCreated');
     };
   }, [organization?.slug, state]);
@@ -203,15 +268,7 @@ export default function PublicStatusPage({
         <meta property="og:type" content="website" />
         <meta property="og:url" content={typeof window !== 'undefined' ? window.location.href : ''} />
       </Head>
-      <header className="w-full py-6 px-4 flex items-center justify-between max-w-6xl mx-auto">
-        <div className="flex items-center gap-2 text-xl font-bold">
-          <span className="text-primary">StatusPage</span>
-        </div>
-        <div className="flex gap-2">
-          <Link href={route('login')}><Button variant="outline">Login</Button></Link>
-          <Link href={route('register')}><Button>Get Started</Button></Link>
-        </div>
-      </header>
+      <Header />
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
           <StatusBadge status={overall.status} />
@@ -228,8 +285,18 @@ export default function PublicStatusPage({
       </div>
       <div>
         <h2 className="text-lg font-semibold mb-2">Services</h2>
-        <ServiceList initialServices={serviceList} orgSlug={organization.slug} />
+        <ServiceList initialServices={serviceList} orgSlug={organization.slug} isPublic={true} />
       </div>
+      
+      {uptimeMetrics && uptimeMetrics.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Service Uptime Analytics</h2>
+          <PublicUptimeChart 
+            services={uptimeMetrics}
+            chartData={chartData}
+          />
+        </div>
+      )}
       <div>
         <h2 className="text-lg font-semibold mb-2">Active Incidents</h2>
         <IncidentList initialIncidents={incidentList} />

@@ -38,7 +38,6 @@ class IncidentController extends Controller
         
         return Inertia::render('incidents/index', [
             'incidents' => IncidentResource::collection($incidents),
-            'canCreate' => $user->can('create', Incident::class),
         ]);
     }
 
@@ -105,6 +104,13 @@ class IncidentController extends Controller
         
         // Attach services to incident
         $incident->services()->attach($validated['service_ids']);
+        
+        // Load the services relationship for the status service
+        $incident->load('services');
+        
+        // Update service statuses based on incident severity
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        $statusService->updateServiceStatusFromIncident($incident);
         
         event(new IncidentCreated($incident));
         
@@ -202,6 +208,14 @@ class IncidentController extends Controller
             event(new IncidentUpdated($incident));
         }
         
+        // Update service statuses based on incident changes
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED) {
+            $statusService->handleIncidentResolved($incident);
+        } else {
+            $statusService->handleIncidentUpdated($incident);
+        }
+        
         return redirect()->route('incidents.index')->with('success', 'Incident updated successfully.');
     }
 
@@ -255,6 +269,10 @@ class IncidentController extends Controller
             'resolved_by' => Auth::id(),
             'resolved_at' => now(),
         ]);
+        
+        // Update service statuses when incident is resolved
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        $statusService->handleIncidentResolved($incident);
         
         event(new IncidentResolved($incident));
         

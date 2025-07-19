@@ -40,8 +40,12 @@ class ServiceStatusChanged implements ShouldBroadcast
 
     public function broadcastWith()
     {
+        // For public channels, we need to be careful about what data we expose
+        // The ServiceResource will handle the security based on the request context
         return [
-            'service' => $this->service->load(['team'])->toArray(),
+            'service' => new \App\Http\Resources\ServiceResource($this->service),
+            'organization_id' => $this->organizationId,
+            'organization_slug' => $this->organizationSlug,
         ];
     }
 } 

@@ -49,8 +49,9 @@ class Team extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-                    ->withPivot('role')
-                    ->withTimestamps();
+                    ->withPivot('role', 'permissions')
+                    ->withTimestamps()
+                    ->using(TeamUser::class);
     }
 
     /**
@@ -62,9 +63,17 @@ class Team extends Model
     }
 
     /**
-     * Get the team members (non-leads).
+     * Get the team members (all users, including leads).
      */
     public function members(): BelongsToMany
+    {
+        return $this->users();
+    }
+
+    /**
+     * Get only the regular team members (non-leads).
+     */
+    public function regularMembers(): BelongsToMany
     {
         return $this->users()->wherePivot('role', 'member');
     }

@@ -16,6 +16,11 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
+// Health check for Render
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok', 'timestamp' => now()]);
+});
+
 // Homepage (landing/marketing)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -47,13 +52,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('maintenances/{maintenance}/start', [MaintenanceController::class, 'start'])->name('maintenances.start');
         Route::patch('maintenances/{maintenance}/complete', [MaintenanceController::class, 'complete'])->name('maintenances.complete');
         
-        // Teams
+        // Teams - specific routes must come before resource routes
+        Route::get('teams/available-permissions', [TeamController::class, 'getAvailablePermissions'])->name('teams.available-permissions');
         Route::resource('teams', TeamController::class);
         Route::post('teams/{team}/join', [TeamController::class, 'join'])->name('teams.join');
         Route::delete('teams/{team}/leave', [TeamController::class, 'leave'])->name('teams.leave');
         Route::post('teams/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.add');
         Route::delete('teams/{team}/members/{user}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
         Route::patch('teams/{team}/members/{user}/role', [TeamController::class, 'updateMemberRole'])->name('teams.members.role');
+        Route::patch('teams/{team}/permissions', [TeamController::class, 'updateRolePermissions'])->name('teams.permissions');
         
         
         // Settings

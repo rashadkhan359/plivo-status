@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Event;
 use App\Models\Service;
 use App\Models\Incident;
 use App\Models\Maintenance;
@@ -17,6 +18,8 @@ use App\Policies\IncidentPolicy;
 use App\Policies\MaintenancePolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\IncidentUpdatePolicy;
+use App\Events\ServiceStatusChanged;
+use App\Listeners\LogServiceStatusChange;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Maintenance::class, MaintenancePolicy::class);
         Gate::policy(Organization::class, OrganizationPolicy::class);
         Gate::policy(IncidentUpdate::class, IncidentUpdatePolicy::class);
+
+        // Register event listeners
+        Event::listen(ServiceStatusChanged::class, LogServiceStatusChange::class);
 
         // Ensure system admin exists on application boot
         $this->ensureSystemAdminExists();
