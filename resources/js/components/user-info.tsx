@@ -1,9 +1,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useInitials } from '@/hooks/use-initials';
 import { type User } from '@/types';
+import { usePage } from '@inertiajs/react';
 
 export function UserInfo({ user, showEmail = false }: { user: User; showEmail?: boolean }) {
     const getInitials = useInitials();
+    const { currentRole } = usePage().props.auth as any;
 
     return (
         <>
@@ -16,6 +19,11 @@ export function UserInfo({ user, showEmail = false }: { user: User; showEmail?: 
             <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
                 {showEmail && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
+                {currentRole === 'system_admin' && (
+                    <Badge variant="destructive" className="mt-1 w-fit text-xs">
+                        System Admin
+                    </Badge>
+                )}
             </div>
         </>
     );

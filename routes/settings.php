@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\OrganizationController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 Route::middleware(['auth', 'organization.context'])->group(function () {
@@ -18,4 +20,16 @@ Route::middleware(['auth', 'organization.context'])->group(function () {
     Route::get('settings/appearance', function () {
         return Inertia::render('settings/appearance');
     })->name('appearance');
+
+    // Organization settings (admin only)
+
+    Route::get('settings/organization', [OrganizationController::class, 'edit'])->name('organization.edit');
+    Route::patch('settings/organization', [OrganizationController::class, 'update'])->name('organization.update');
+
+    Route::get('settings/organization/team', [OrganizationController::class, 'team'])->name('organization.team');
+    Route::get('settings/organization/invite', [OrganizationController::class, 'inviteForm'])->name('organization.invite');
+    Route::post('settings/organization/invite', [OrganizationController::class, 'invite'])->name('organization.invite.store');
+    Route::patch('settings/organization/team/role', [OrganizationController::class, 'updateMemberRole'])->name('organization.team.role');
+    Route::delete('settings/organization/team/member', [OrganizationController::class, 'removeMember'])->name('organization.team.remove');
+    Route::patch('settings/organization/permissions', [OrganizationController::class, 'updateRolePermissions'])->name('organization.permissions');
 });

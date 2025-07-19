@@ -1,28 +1,17 @@
 import { useEffect, useState } from 'react';
 import { ServiceCard } from '@/components/service-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRealtime } from '@/hooks/use-realtime';
-import { RealtimeIndicator } from '@/components/realtime-indicator';
 import { Service } from '@/types/service';
 
-export function ServiceList({ initialServices, orgId, orgSlug }: { initialServices: Service[]; orgId?: string; orgSlug?: string }) {
+export function ServiceList({ initialServices, orgId, orgSlug, isPublic = false }: { initialServices: Service[]; orgId?: string; orgSlug?: string; isPublic?: boolean }) {
   const [services, setServices] = useState<Service[]>(initialServices);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { state, subscribe, unsubscribe } = useRealtime();
 
+  // Sync with prop changes
   useEffect(() => {
-    if (!orgId || !orgSlug) return;
-    const handleStatusChanged = (data: { service: Service }) => {
-      setServices((prev) => prev.map((s) => (s.id === data.service.id ? data.service : s)));
-    };
-    subscribe(`organization.${orgId}`, 'ServiceStatusChanged', handleStatusChanged);
-    subscribe(`status.${orgSlug}`, 'ServiceStatusChanged', handleStatusChanged);
-    return () => {
-      unsubscribe(`organization.${orgId}`, 'ServiceStatusChanged');
-      unsubscribe(`status.${orgSlug}`, 'ServiceStatusChanged');
-    };
-  }, [orgId, orgSlug, subscribe, unsubscribe]);
+    setServices(initialServices);
+  }, [initialServices]);
 
   if (loading) {
     return (
@@ -41,12 +30,9 @@ export function ServiceList({ initialServices, orgId, orgSlug }: { initialServic
   }
   return (
     <div>
-      <div className="mb-2 flex justify-end">
-        <RealtimeIndicator state={state} />
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {services.map((service) => (
-          <ServiceCard key={service.id} service={service} />
+          <ServiceCard key={service.id} service={service} isPublic={isPublic} />
         ))}
       </div>
     </div>

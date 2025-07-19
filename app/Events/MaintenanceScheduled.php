@@ -3,13 +3,14 @@
 namespace App\Events;
 
 use App\Models\Maintenance;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class MaintenanceScheduled implements ShouldBroadcastNow
+class MaintenanceScheduled implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -27,15 +28,20 @@ class MaintenanceScheduled implements ShouldBroadcastNow
     public function broadcastOn()
     {
         return [
-            new PrivateChannel('organization.' . $this->organizationId),
             new Channel('status.' . $this->organizationSlug),
+            new PrivateChannel('organization.' . $this->organizationId),
         ];
+    }
+
+    public function broadcastAs()
+    {
+        return 'MaintenanceScheduled';
     }
 
     public function broadcastWith()
     {
         return [
-            'maintenance' => $this->maintenance->toArray(),
+            'maintenance' => $this->maintenance->load(['service'])->toArray(),
         ];
     }
 } 

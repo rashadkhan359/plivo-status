@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Service;
 use App\Models\Incident;
 use App\Models\Maintenance;
+use App\Services\UptimeMetricsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,9 +22,23 @@ class PublicStatusController extends Controller
     public function show(Request $request, $slug): Response
     {
         $organization = Organization::where('slug', $slug)->firstOrFail();
-        $services = Service::forOrganization($organization->id)->get();
-        $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
-        $maintenances = Maintenance::forOrganization($organization->id)->latest()->take(5)->get();
+        
+        // Only show public services
+        $services = Service::forOrganization($organization->id)
+            ->where('visibility', 'public')
+            ->get();
+            
+        // Only show public incidents
+        $incidents = Incident::forOrganization($organization->id)
+            ->latest()
+            ->take(10)
+            ->get();
+
+        // Only show public maintenances
+        $maintenances = Maintenance::forOrganization($organization->id)
+            ->latest()
+            ->take(5)
+            ->get();
 
         // Get the IDs of the incidents for the organization
         $incidentIds = $incidents->pluck('id');
@@ -34,12 +49,40 @@ class PublicStatusController extends Controller
             ->take(15)
             ->get();
 
+        // Get basic uptime metrics for public display (90-day average)
+        $uptimeService = app(UptimeMetricsService::class);
+        $publicUptimeMetrics = [];
+        $chartData = [];
+        
+        foreach ($services as $service) {
+            // Get uptime percentage
+            $uptime = $uptimeService->calculateUptimeForPeriod($service, now()->subDays(90), now());
+            $publicUptimeMetrics[] = [
+                'service_id' => $service->id,
+                'service_name' => $service->name,
+                'uptime_percentage' => round($uptime, 1),
+                'period' => '90d',
+            ];
+            
+            // Get 30-day chart data for visualization
+            $serviceChartData = $uptimeService->getUptimeChartData($service, '30d');
+            $chartData[$service->id] = array_map(function($point) {
+                return [
+                    'date' => \Carbon\Carbon::parse($point['timestamp'])->format('M-d'),
+                    'uptime' => $point['uptime'],
+                    'timestamp' => $point['timestamp'],
+                ];
+            }, $serviceChartData);
+        }
+
         return Inertia::render('public-status-page', [
             'organization' => $organization,
             'services' => ServiceResource::collection($services),
             'incidents' => IncidentResource::collection($incidents),
             'maintenances' => MaintenanceResource::collection($maintenances),
             'updates' => \App\Http\Resources\IncidentUpdateResource::collection($updates),
+            'uptimeMetrics' => $publicUptimeMetrics,
+            'chartData' => $chartData,
         ]);
     }
 
@@ -49,9 +92,23 @@ class PublicStatusController extends Controller
     public function apiShow(Request $request, $slug)
     {
         $organization = Organization::where('slug', $slug)->firstOrFail();
-        $services = Service::forOrganization($organization->id)->get();
-        $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
-        $maintenances = Maintenance::forOrganization($organization->id)->latest()->take(5)->get();
+        
+        // Only show public services
+        $services = Service::forOrganization($organization->id)
+            ->where('visibility', 'public')
+            ->get();
+            
+        // Only show public incidents
+        $incidents = Incident::forOrganization($organization->id)
+            ->latest()
+            ->take(10)
+            ->get();
+
+        // Only show public maintenances
+        $maintenances = Maintenance::forOrganization($organization->id)
+            ->latest()
+            ->take(5)
+            ->get();
 
         // Get the IDs of the incidents for the organization
         $incidentIds = $incidents->pluck('id');

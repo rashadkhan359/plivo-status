@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import { useToast } from '@/hooks/use-toast';
 
 type RegisterForm = {
     organization_name: string;
@@ -18,6 +19,8 @@ type RegisterForm = {
 };
 
 export default function Register() {
+    const toast = useToast();
+    
     const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
         organization_name: '',
         name: '',
@@ -29,6 +32,12 @@ export default function Register() {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('register'), {
+            onSuccess: () => {
+                toast.success('Account created successfully! Welcome to ' + data.organization_name + '.');
+            },
+            onError: () => {
+                toast.error('Failed to create account. Please check your information and try again.');
+            },
             onFinish: () => reset('password', 'password_confirmation'),
         });
     };

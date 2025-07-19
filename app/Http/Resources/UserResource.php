@@ -18,8 +18,9 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'role' => $this->role,
             'created_at' => $this->created_at->toFormattedDateString(),
+            'role' => $this->role,
+            'is_system_admin' => $this->is_system_admin,
         ];
     }
 }

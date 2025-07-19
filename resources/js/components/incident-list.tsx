@@ -3,17 +3,23 @@ import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Incident } from '@/types/incident';
 
-export function IncidentList({ initialIncidents }: { initialIncidents: Incident[] }) {
+export function IncidentList({ 
+  initialIncidents, 
+  orgId, 
+  orgSlug 
+}: { 
+  initialIncidents: Incident[];
+  orgId?: string;
+  orgSlug?: string;
+}) {
   const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Example: Listen for real-time updates (replace with your WebSocket logic)
+  // Sync with prop changes
   useEffect(() => {
-    // TODO: Replace with Laravel Echo or your WebSocket client
-    // Example: window.Echo.channel('incidents').listen('incident.status.updated', ...)
-    // setIncidents(...)
-  }, []);
+    setIncidents(initialIncidents);
+  }, [initialIncidents]);
 
   if (loading) {
     return (

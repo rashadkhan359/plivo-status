@@ -2,27 +2,10 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
-import { type NavItem } from '@/types';
+import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Wrench, AlertTriangle, ListChecks, Shield } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Settings, Wrench, AlertTriangle, ListChecks, Shield, Users, UserPlus } from 'lucide-react';
 import AppLogo from './app-logo';
-
-const adminNavItems: NavItem[] = [
-    { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-    { title: 'Organizations', href: route('admin.organizations.index'), icon: Shield },
-    { title: 'Maintenance', href: route('admin.maintenance.index'), icon: ListChecks },
-    { title: 'Services', href: '/services', icon: Wrench },
-    { title: 'Incidents', href: '/incidents', icon: AlertTriangle },
-    { title: 'Settings', href: '/settings', icon: Settings },
-];
-
-const memberNavItems: NavItem[] = [
-    { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-    { title: 'Services', href: '/services', icon: Wrench },
-    { title: 'Incidents', href: '/incidents', icon: AlertTriangle },
-    { title: 'Maintenance', href: '/maintenances', icon: ListChecks },
-    // No settings for members
-];
 
 const footerNavItems: NavItem[] = [
     { title: 'Repository', href: 'https://github.com/laravel/react-starter-kit', icon: Folder },
@@ -30,10 +13,32 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { props } = usePage<PageProps>();
-    const role = props.auth.user?.role || 'member';
-    console.log(role);
-    const navItems = role === 'admin' ? adminNavItems : memberNavItems;
+    const { props } = usePage<SharedData>();
+    const { currentRole, currentPermissions } = props.auth;
+    
+    // Build navigation items based on permissions
+    const navItems: NavItem[] = [
+        { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+        { title: 'Services', href: '/services', icon: Wrench },
+        { title: 'Incidents', href: '/incidents', icon: AlertTriangle },
+        { title: 'Maintenances', href: '/maintenances', icon: ListChecks },
+    ];
+
+    // Add team management for users with manage_teams permission
+    if (currentPermissions?.organization?.manage_teams) {
+        navItems.push({ title: 'Teams', href: '/teams', icon: Users });
+    }
+
+    // Add admin sections for system admins only
+    if (currentRole === 'system_admin') {
+        navItems.push({ title: 'Organizations', href: route('admin.organizations.index'), icon: Shield });
+    }
+
+    // Settings for users with organization management permissions or higher roles
+    if (currentPermissions?.organization?.manage_organization || currentRole === 'owner' || currentRole === 'admin' || currentRole === 'system_admin') {
+        navItems.push({ title: 'Settings', href: '/settings', icon: Settings });
+    }
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -53,8 +58,8 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
+                <NavFooter items={footerNavItems} />
             </SidebarFooter>
         </Sidebar>
     );

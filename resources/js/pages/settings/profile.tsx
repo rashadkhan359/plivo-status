@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { useToast } from '@/hooks/use-toast';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -26,6 +27,7 @@ type ProfileForm = {
 
 export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: boolean; status?: string }) {
     const { auth } = usePage<SharedData>().props;
+    const toast = useToast();
 
     const { data, setData, patch, errors, processing, recentlySuccessful } = useForm<Required<ProfileForm>>({
         name: auth.user.name,
@@ -36,6 +38,12 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
         e.preventDefault();
 
         patch(route('profile.update'), {
+            onSuccess: () => {
+                toast.success('Profile updated successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to update profile. Please try again.');
+            },
             preserveScroll: true,
         });
     };

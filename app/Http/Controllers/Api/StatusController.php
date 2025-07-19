@@ -15,14 +15,14 @@ class StatusController
     {
         return response()->json([
             'organization' => $organization,
-            'services' => ServiceResource::collection($organization->services),
+            'services' => ServiceResource::collection($organization->services()->where('visibility', 'public')->get()),
             'incidents' => IncidentResource::collection($organization->incidents()->latest()->take(10)->get()),
         ]);
     }
 
     public function services(Organization $organization)
     {
-        return ServiceResource::collection($organization->services);
+        return ServiceResource::collection($organization->services()->where('visibility', 'public')->get());
     }
 
     public function incidents(Organization $organization)

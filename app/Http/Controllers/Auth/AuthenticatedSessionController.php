@@ -31,8 +31,44 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
+        
+        $user = Auth::user();
+        
+        // System admins don't need organization access
+        if ($user->isSystemAdmin()) {
+            return redirect()->route('dashboard');
+        }
+        
+        // Check if user has access to any organization
+        $hasOrganizationAccess = $this->verifyOrganizationAccess($user);
+        
+        if (!$hasOrganizationAccess) {
+            Auth::logout();
+            return back()->withErrors([
+                'email' => 'Your account is not associated with any organization or has been deactivated.',
+            ]);
+        }
+        
         // Always redirect to dashboard after login
         return redirect()->route('dashboard');
+    }
+
+    /**
+     * Verify user has access to at least one organization
+     */
+    protected function verifyOrganizationAccess($user): bool
+    {
+        // Check new pivot table relationships
+        if ($user->organizations()->wherePivot('is_active', true)->exists()) {
+            return true;
+        }
+        
+        // Fallback to legacy organization_id for backward compatibility
+        if ($user->organization_id && $user->organization) {
+            return true;
+        }
+        
+        return false;
     }
 
     /**

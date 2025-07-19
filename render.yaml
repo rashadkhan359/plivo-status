@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: plivo-status
+    env: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerCommand: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: LOG_CHANNEL
+        value: stack
+      - key: DB_CONNECTION
+        value: sqlite
+      - key: DB_DATABASE
+        value: /var/www/html/database/database.sqlite
+      - key: CACHE_DRIVER
+        value: file
+      - key: SESSION_DRIVER
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: BROADCAST_DRIVER
+        value: pusher
+      - key: PUSHER_APP_ID
+        sync: false
+      - key: PUSHER_APP_KEY
+        sync: false
+      - key: PUSHER_APP_SECRET
+        sync: false
+      - key: PUSHER_HOST
+        value: api-mt1.pusherapp.com
+      - key: PUSHER_PORT
+        value: 443
+      - key: PUSHER_SCHEME
+        value: https
+      - key: PUSHER_APP_CLUSTER
+        sync: false 
