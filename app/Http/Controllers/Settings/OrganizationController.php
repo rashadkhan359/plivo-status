@@ -86,7 +86,10 @@ class OrganizationController extends Controller
         foreach ($roles as $role) {
             $roleUsers = $organization->users()->wherePivot('role', $role)->get();
             if ($roleUsers->isNotEmpty()) {
-                $permissions = json_decode($roleUsers->first()->pivot->permissions ?? '[]', true);
+                $permissionsData = $roleUsers->first()->pivot->permissions ?? '[]';
+                $permissions = is_string($permissionsData) ? json_decode($permissionsData, true) : $permissionsData;
+                $permissions = is_array($permissions) ? $permissions : [];
+                
                 $rolePermissions[$role] = [
                     'manage_organization' => in_array('manage_organization', $permissions),
                     'manage_users' => in_array('manage_users', $permissions),

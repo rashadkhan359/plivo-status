@@ -56,6 +56,11 @@ class ServicePolicy
             return false;
         }
 
+        // Check if user has manage_services permission
+        if ($this->hasPermission($user, 'manage_services')) {
+            return true;
+        }
+
         // Owners and admins can update any service
         if ($this->hasRole($user, ['owner', 'admin'])) {
             return true;
@@ -77,6 +82,11 @@ class ServicePolicy
     {
         if (!$this->belongsToSameOrganization($user, $service)) {
             return false;
+        }
+
+        // Check if user has manage_services permission
+        if ($this->hasPermission($user, 'manage_services')) {
+            return true;
         }
 
         // Only owners, admins, and service creators can delete

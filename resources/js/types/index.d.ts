@@ -1,5 +1,4 @@
 import { LucideIcon } from 'lucide-react';
-import type { Config } from 'ziggy-js';
 
 export interface Auth {
     user: User;
@@ -13,17 +12,17 @@ export interface Auth {
         created_at: string;
         updated_at: string;
     };
-      currentRole?: 'system_admin' | 'owner' | 'admin' | 'team_lead' | 'member';
-  currentPermissions?: {
-    manage_organization?: boolean;
-    manage_users?: boolean;
-    manage_teams?: boolean;
-    manage_services?: boolean;
-    manage_incidents?: boolean;
-    manage_maintenance?: boolean;
-    view_analytics?: boolean;
-    system_admin?: boolean;
-  };
+    currentRole?: 'system_admin' | 'owner' | 'admin' | 'team_lead' | 'member';
+    currentPermissions?: {
+        manage_organization?: boolean;
+        manage_users?: boolean;
+        manage_teams?: boolean;
+        manage_services?: boolean;
+        manage_incidents?: boolean;
+        manage_maintenance?: boolean;
+        view_analytics?: boolean;
+        system_admin?: boolean;
+    };
 }
 
 export interface BreadcrumbItem {

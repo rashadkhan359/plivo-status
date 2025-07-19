@@ -29,8 +29,8 @@ export function AppSidebar() {
         navItems.push({ title: 'Teams', href: '/teams', icon: Users });
     }
 
-    // Add admin sections for system admins, owners and admins
-    if (currentRole === 'system_admin' || currentRole === 'owner' || currentRole === 'admin') {
+    // Add admin sections for system admins only
+    if (currentRole === 'system_admin') {
         navItems.push({ title: 'Organizations', href: route('admin.organizations.index'), icon: Shield });
     }
 

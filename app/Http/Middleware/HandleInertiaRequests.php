@@ -67,7 +67,7 @@ class HandleInertiaRequests extends Middleware
                 'manage_users' => false,
                 'manage_teams' => false,
                 'manage_services' => false,
-                'manage_incidents' => false,
+                'manage_incidents' => true, // Members can view and create incidents
                 'manage_maintenance' => false,
                 'view_analytics' => false,
             ],

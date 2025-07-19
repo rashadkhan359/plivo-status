@@ -6,10 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/layouts/app-layout';
 import { Service, Team } from '@/types/service';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Edit, Trash2, Zap, Plus, Wrench, Users, EyeOff } from 'lucide-react';
 import React from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { SharedData } from '@/types';
 
 interface Props {
     services: {
@@ -26,6 +27,8 @@ interface Props {
 
 export default function ServiceIndex({ services, teams, canCreate }: PageProps<Props>) {
     const toast = useToast();
+    const { props } = usePage<SharedData>();
+    const { currentPermissions } = props.auth;
     
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(null);
@@ -192,28 +195,34 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                                             <StatusBadge status={service.status} />
                                         </div>
                                         
-                                        <div className="flex gap-2 mt-auto pt-4">
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                onClick={() => handleStatusUpdateClick(service)}
-                                                className="flex items-center gap-2 flex-1"
-                                            >
-                                                <Zap className="h-4 w-4" />
-                                                Update Status
-                                            </Button>
-                                            <Link href={`/services/${service.id}/edit`}>
-                                                <Button size="sm" variant="outline">
-                                                    <Edit className="h-4 w-4" />
+                                                                                <div className="flex gap-2 mt-auto pt-4">
+                                            {currentPermissions?.manage_services && (
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    onClick={() => handleStatusUpdateClick(service)}
+                                                    className="flex items-center gap-2 flex-1"
+                                                >
+                                                    <Zap className="h-4 w-4" />
+                                                    Update Status
                                                 </Button>
-                                            </Link>
-                                            <Button 
-                                                size="sm" 
-                                                variant="outline" 
-                                                onClick={() => handleDeleteClick(service)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            )}
+                                            {currentPermissions?.manage_services && (
+                                                <Link href={`/services/${service.id}/edit`}>
+                                                    <Button size="sm" variant="outline">
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                            {currentPermissions?.manage_services && (
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    onClick={() => handleDeleteClick(service)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </Card>
                                 ))}

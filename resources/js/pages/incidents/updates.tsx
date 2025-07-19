@@ -92,7 +92,7 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <div className="p-4 max-w-4xl mx-auto">
+            <div className="p-6 mx-auto">
                 <Head title={`Updates - ${incident.title}`} />
                 
                 {/* Incident Header */}
@@ -172,7 +172,17 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
                                         <Label htmlFor="status">Status</Label>
                                         <Select value={data.status} onValueChange={(value) => setData('status', value as IncidentStatus)}>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select status" />
+                                                {/* Custom rendering for selected value: only icon + label, single line, centered */}
+                                                {(() => {
+                                                    const selected = statusOptions.find(option => option.value === data.status);
+                                                    const Icon = selected ? (statusIcons[selected.value as IncidentStatus]?.icon || Info) : Info;
+                                                    return (
+                                                        <div className="flex items-center gap-2 truncate w-full">
+                                                            <Icon className="h-4 w-4" />
+                                                            <span className="font-medium truncate">{selected ? selected.label : "Select status"}</span>
+                                                        </div>
+                                                    );
+                                                })()}
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {statusOptions.map(option => {
@@ -181,9 +191,9 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
                                                         <SelectItem key={option.value} value={option.value}>
                                                             <div className="flex items-center gap-2">
                                                                 <Icon className="h-4 w-4" />
-                                                                <div>
-                                                                    <div className="font-medium">{option.label}</div>
-                                                                    <div className="text-xs text-muted-foreground">{option.description}</div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{option.label}</span>
+                                                                    <span className="text-xs text-muted-foreground">{option.description}</span>
                                                                 </div>
                                                             </div>
                                                         </SelectItem>
