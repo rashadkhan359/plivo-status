@@ -41,7 +41,7 @@ class MaintenanceScheduled implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'maintenance' => $this->maintenance->load(['services'])->toArray(),
+            'maintenance' => $this->maintenance->load(['service'])->toArray(),
         ];
     }
 } 

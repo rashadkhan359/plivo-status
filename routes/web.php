@@ -11,7 +11,7 @@ use App\Http\Controllers\PublicStatusController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\Admin\OrganizationController;
-use App\Http\Controllers\Admin\MaintenanceController as AdminMaintenanceController;
+
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -55,14 +55,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('teams/{team}/members/{user}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
         Route::patch('teams/{team}/members/{user}/role', [TeamController::class, 'updateMemberRole'])->name('teams.members.role');
         
-        // User Management (Admin/Owner only)
-        Route::middleware(['can:viewAny,App\Models\User'])->group(function () {
-            Route::get('/users', [UserController::class, 'index'])->name('users.index');
-            Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
-            Route::post('/users', [UserController::class, 'store'])->name('users.store');
-            Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
-            Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-        });
         
         // Settings
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
@@ -70,10 +62,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-// Admin-only routes
-Route::middleware(['auth', 'organization.context', EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
+// Admin-only routes (no organization context needed)
+Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('organizations', OrganizationController::class)->only(['index', 'show']);
-    Route::resource('maintenance', AdminMaintenanceController::class)->only(['index']);
 });
 
 // Auth routes (Breeze)

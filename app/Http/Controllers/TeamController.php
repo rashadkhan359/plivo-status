@@ -6,7 +6,6 @@ use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,13 +18,22 @@ class TeamController extends Controller
     {
         $this->authorize('viewAny', Team::class);
         
-        $organization = App::get('current_organization');
-        $teams = $organization->teams()->with(['members', 'services'])->get();
-        dd($teams);
+        $organization = $this->getCurrentOrganization();
+        $user = Auth::user();
+        
+        // All users (including system admins) see only their organization's teams
+        if (!$organization) {
+            $teams = collect();
+        } else {
+            $teams = $organization->teams()->with(['members', 'services']);
+        }
+        
+        // Apply pagination
+        $teams = $teams->paginate(12)->withQueryString();
         
         return Inertia::render('teams/index', [
             'teams' => $teams,
-            'canCreate' => Auth::user()->can('create', Team::class),
+            'canCreate' => $user->can('create', Team::class),
         ]);
     }
 
@@ -36,7 +44,11 @@ class TeamController extends Controller
     {
         $this->authorize('create', Team::class);
         
-        return Inertia::render('teams/create');
+        $user = Auth::user();
+        
+        return Inertia::render('teams/create', [
+            'organizations' => null, // No need to show all organizations
+        ]);
     }
 
     /**
@@ -46,7 +58,13 @@ class TeamController extends Controller
     {
         $this->authorize('create', Team::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getOrganizationForResource($request);
+        $user = Auth::user();
+        
+        // For system admins, require organization_id
+        if ($user->isSystemAdmin() && !$organization) {
+            abort(422, 'Organization ID is required for system admins.');
+        }
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -54,7 +72,10 @@ class TeamController extends Controller
             'color' => 'nullable|string|max:7',
         ]);
         
-        $team = $organization->teams()->create($validated);
+        $team = $organization->teams()->create([
+            ...$validated,
+            'created_by' => $user->id,
+        ]);
         
         return redirect()->route('teams.index')->with('success', 'Team created successfully.');
     }
@@ -66,11 +87,17 @@ class TeamController extends Controller
     {
         $this->authorize('view', $team);
         
+        $organization = $this->getCurrentOrganization();
+        $user = Auth::user();
         $team->load(['members', 'services']);
+        
+        // Get all users in the organization for member management
+        $availableUsers = $organization ? $organization->users()->get() : collect();
         
         return Inertia::render('teams/show', [
             'team' => $team,
-            'canManageMembers' => Auth::user()->can('manageMembers', $team),
+            'canManageMembers' => $user->can('manageMembers', $team),
+            'availableUsers' => $availableUsers,
         ]);
     }
 
@@ -158,9 +185,14 @@ class TeamController extends Controller
         ]);
         
         $user = User::findOrFail($validated['user_id']);
+        $currentUser = Auth::user();
         
         // Check if user belongs to same organization
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
+        if (!$organization) {
+            return back()->withErrors(['user_id' => 'No organization context available.']);
+        }
+        
         if (!$user->organizations()->where('organizations.id', $organization->id)->exists()) {
             return back()->withErrors(['user_id' => 'User does not belong to this organization.']);
         }

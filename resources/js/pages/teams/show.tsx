@@ -1,12 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
-import { Users, Settings, Plus, UserPlus, Trash2, Edit } from 'lucide-react';
+import { Settings, Edit, Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import AppLayout from '@/layouts/app-layout';
-import { Team, User, Service } from '@/types';
+import { Team, Service } from '@/types/service';
+import { User } from '@/types';
+import { TeamMemberManagement } from '@/components/team-member-management';
+import React from 'react';
 
 interface TeamShowProps {
     team: Team & {
@@ -14,25 +16,21 @@ interface TeamShowProps {
         services: Service[];
     };
     canManageMembers: boolean;
+    availableUsers: User[];
 }
 
-export default function TeamShow({ team, canManageMembers }: TeamShowProps) {
-    const getRoleBadge = (role: string) => {
-        switch (role) {
-            case 'lead':
-                return <Badge variant="default" className="bg-orange-100 text-orange-800">Lead</Badge>;
-            case 'member':
-                return <Badge variant="secondary">Member</Badge>;
-            default:
-                return <Badge variant="outline">{role}</Badge>;
-        }
-    };
+export default function TeamShow({ team, canManageMembers, availableUsers }: TeamShowProps) {
+    const breadcrumbs = [
+        { title: 'Settings', href: route('profile.edit') },
+        { title: 'Organization', href: route('organization.edit') },
+        { title: 'Team', href: route('organization.team') },
+    ];
 
     return (
-        <AppLayout>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Team - ${team.name}`} />
             
-            <div className="space-y-6">
+            <div className="space-y-6 p-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">{team.name}</h1>
@@ -42,6 +40,12 @@ export default function TeamShow({ team, canManageMembers }: TeamShowProps) {
                     </div>
                     
                     <div className="flex items-center space-x-2">
+                        <Button asChild variant="outline">
+                            <Link href={route('organization.team')}>
+                                <Users className="h-4 w-4 mr-2" />
+                                Organization Team
+                            </Link>
+                        </Button>
                         {canManageMembers && (
                             <Button asChild variant="outline">
                                 <Link href={route('teams.edit', team.id)}>
@@ -55,47 +59,11 @@ export default function TeamShow({ team, canManageMembers }: TeamShowProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Team Members */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Users className="h-5 w-5" />
-                                Team Members ({team.members.length})
-                            </CardTitle>
-                            <CardDescription>
-                                People who are part of this team.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {team.members.map((member) => (
-                                    <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                        <div className="flex items-center space-x-3">
-                                            <Avatar>
-                                                <AvatarFallback>
-                                                    {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="font-medium">{member.name}</div>
-                                                <div className="text-sm text-muted-foreground">{member.email}</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center space-x-2">
-                                            {getRoleBadge(member.pivot?.role || 'member')}
-                                        </div>
-                                    </div>
-                                ))}
-                                
-                                {team.members.length === 0 && (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                        <p>No members in this team.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <TeamMemberManagement 
+                        team={team}
+                        availableUsers={availableUsers}
+                        canManageMembers={canManageMembers}
+                    />
 
                     {/* Team Services */}
                     <Card>

@@ -29,6 +29,9 @@ class MaintenanceController extends Controller
         
         // Get maintenances accessible to the user
         $maintenances = $this->getAccessibleMaintenances($user, $organization);
+        
+        // Apply pagination
+        $maintenances = $maintenances->paginate(15)->withQueryString();
 
         return Inertia::render('maintenances/index', [
             'maintenances' => MaintenanceResource::collection($maintenances),
@@ -50,7 +53,8 @@ class MaintenanceController extends Controller
         $services = $this->getAccessibleServices($user, $organization);
         
         return Inertia::render('maintenances/create', [
-            'services' => ServiceResource::collection($services),
+            'services' => ServiceResource::collection($services->get()),
+            'organizations' => null, // No need to show all organizations
         ]);
     }
 
@@ -61,11 +65,11 @@ class MaintenanceController extends Controller
     {
         $this->authorize('create', Maintenance::class);
         
-        $organization = $this->getCurrentOrganization();
+        $organization = $this->getOrganizationForResource($request);
         $user = Auth::user();
         
         $validated = $request->validate([
-            'service_id' => 'nullable|exists:services,id',
+            'service_id' => 'nullable|string',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => ['required', new Enum(MaintenanceStatus::class)],
@@ -73,8 +77,16 @@ class MaintenanceController extends Controller
             'scheduled_end' => 'required|date|after:scheduled_start',
         ]);
         
-        // Validate service belongs to organization if provided
-        if ($validated['service_id']) {
+        // For system admins, require organization_id
+        if ($user->isSystemAdmin() && !$organization) {
+            abort(422, 'Organization ID is required for system admins.');
+        }
+        
+        // Handle "none" value for service_id
+        if ($validated['service_id'] === 'none' || $validated['service_id'] === '') {
+            $validated['service_id'] = null;
+        } else {
+            // Validate service exists and belongs to organization
             $service = $organization->services()
                 ->where('id', $validated['service_id'])
                 ->firstOrFail();
@@ -105,7 +117,7 @@ class MaintenanceController extends Controller
         
         return Inertia::render('maintenances/edit', [
             'maintenance' => new MaintenanceResource($maintenance->load('service')),
-            'services' => ServiceResource::collection($services),
+            'services' => ServiceResource::collection($services->get()),
         ]);
     }
 
@@ -119,7 +131,7 @@ class MaintenanceController extends Controller
         $organization = $this->getCurrentOrganization();
         
         $validated = $request->validate([
-            'service_id' => 'nullable|exists:services,id',
+            'service_id' => 'nullable|string',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'status' => ['required', new Enum(MaintenanceStatus::class)],
@@ -129,8 +141,11 @@ class MaintenanceController extends Controller
             'actual_end' => 'nullable|date|after:actual_start',
         ]);
         
-        // Validate service belongs to organization if provided
-        if ($validated['service_id']) {
+        // Handle "none" value for service_id
+        if ($validated['service_id'] === 'none' || $validated['service_id'] === '') {
+            $validated['service_id'] = null;
+        } else {
+            // Validate service exists and belongs to organization
             $service = $organization->services()
                 ->where('id', $validated['service_id'])
                 ->firstOrFail();
@@ -186,10 +201,15 @@ class MaintenanceController extends Controller
      */
     protected function getAccessibleMaintenances($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return Maintenance::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->maintenances()->with(['service', 'creator']);
         
-        // If user is not admin/owner, filter by their team's services
-        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+        // If user is not admin/owner/system_admin, filter by their team's services
+        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin', 'system_admin'])) {
             $userTeamIds = $user->teams()->pluck('teams.id');
             
             $query->where(function ($q) use ($userTeamIds) {
@@ -202,7 +222,7 @@ class MaintenanceController extends Controller
             });
         }
         
-        return $query->latest('scheduled_start')->get();
+        return $query->latest('scheduled_start');
     }
 
     /**
@@ -210,10 +230,15 @@ class MaintenanceController extends Controller
      */
     protected function getAccessibleServices($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return Service::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->services()->with(['team']);
         
-        // If user is not admin/owner, filter by visibility and team membership
-        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin'])) {
+        // If user is not admin/owner/system_admin, filter by visibility and team membership
+        if (!in_array($user->current_role ?? $user->role, ['owner', 'admin', 'system_admin'])) {
             $userTeamIds = $user->teams()->pluck('teams.id');
             
             $query->where(function ($q) use ($userTeamIds) {
@@ -227,6 +252,6 @@ class MaintenanceController extends Controller
             });
         }
         
-        return $query->orderBy('order')->get();
+        return $query->orderBy('order');
     }
 } 

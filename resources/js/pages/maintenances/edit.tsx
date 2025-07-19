@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import React from 'react';
 import { Maintenance } from '@/types/maintenance';
 import { Service } from '@/types/service';
+import { useToast } from '@/hooks/use-toast';
 
 type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed';
 
@@ -23,8 +24,10 @@ interface Props {
 }
 
 export default function MaintenanceEdit({ maintenance, services }: PageProps<Props>) {
+  const toast = useToast();
+  
   const { data, setData, put, processing, errors } = useForm({
-    service_id: maintenance.data.service_id ? String(maintenance.data.service_id) : '',
+    service_id: maintenance.data.service_id ? String(maintenance.data.service_id) : 'none',
     title: maintenance.data.title || '',
     description: maintenance.data.description || '',
     scheduled_start: maintenance.data.scheduled_start ? new Date(maintenance.data.scheduled_start).toISOString().slice(0, 16) : '',
@@ -34,7 +37,14 @@ export default function MaintenanceEdit({ maintenance, services }: PageProps<Pro
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    put(`/maintenances/${maintenance.data.id}`);
+    put(`/maintenances/${maintenance.data.id}`, {
+      onSuccess: () => {
+        toast.success('Maintenance updated successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to update maintenance. Please try again.');
+      },
+    });
   }
 
   const breadcrumbs = [
@@ -76,7 +86,7 @@ export default function MaintenanceEdit({ maintenance, services }: PageProps<Pro
                       <SelectValue placeholder="Select a service (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No specific service</SelectItem>
+                      <SelectItem value="none">No specific service</SelectItem>
                       {services.data.map((service) => (
                         <SelectItem key={service.id} value={service.id.toString()}>
                           {service.name}

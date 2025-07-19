@@ -16,7 +16,7 @@ class OrganizationPolicy
     public function viewAny(User $user): bool
     {
         // Only system admins can view all organizations
-        return $this->hasRole($user, ['owner', 'admin']);
+        return $user->isSystemAdmin();
     }
 
     /**
@@ -24,6 +24,11 @@ class OrganizationPolicy
      */
     public function view(User $user, Organization $organization): bool
     {
+        // System admins can view any organization
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+        
         return $this->belongsToOrganization($user, $organization);
     }
 

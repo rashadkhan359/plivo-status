@@ -14,7 +14,9 @@ import { Organization } from '@/types/organization';
 import AppLayout from '@/layouts/app-layout';
 
 interface OrganizationSettingsProps {
-    organization: Organization;
+    organization: {
+        data: Organization;
+    };
     canUpdate: boolean;
     canDelete: boolean;
     statusPageUrl: string;
@@ -32,19 +34,24 @@ export default function OrganizationSettings({
     canDelete,
     statusPageUrl
 }: OrganizationSettingsProps) {
-    useToast(); // Initialize toast notifications
+    const toast = useToast();
     const { data, setData, patch, processing, errors, reset } = useForm<OrganizationForm>({
-        name: organization.name,
-        slug: organization.slug,
-        domain: organization.domain || '',
+        name: organization.data.name,
+        slug: organization.data.slug,
+        domain: organization.data.domain || '',
     });
+
+    console.log(organization.data.name);
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         patch(route('organization.update'), {
             preserveScroll: true,
             onSuccess: () => {
-                // Optional: show success message
+                toast.success('Organization updated successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to update organization. Please try again.');
             },
         });
     };
@@ -176,19 +183,19 @@ export default function OrganizationSettings({
                                     </div>
                                 </div>
 
-                                {organization.domain && (
+                                {organization.data.domain && (
                                     <div>
                                         <Label>Custom Domain URL</Label>
                                         <div className="mt-1 flex items-center space-x-2">
                                             <Input
-                                                value={`https://${organization.domain}`}
+                                                value={`https://${organization.data.domain}`}
                                                 readOnly
                                                 className="flex-1"
                                             />
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => window.open(`https://${organization.domain}`, '_blank')}
+                                                onClick={() => window.open(`https://${organization.data.domain}`, '_blank')}
                                             >
                                                 <ExternalLink className="h-4 w-4" />
                                                 View
@@ -211,19 +218,19 @@ export default function OrganizationSettings({
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{organization.users_count || 0}</div>
+                                    <div className="text-2xl font-bold">{organization.data.users_count || 0}</div>
                                     <div className="text-sm text-muted-foreground">Team Members</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{organization.services_count || 0}</div>
+                                    <div className="text-2xl font-bold">{organization.data.services_count || 0}</div>
                                     <div className="text-sm text-muted-foreground">Services</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{organization.incidents_count || 0}</div>
+                                    <div className="text-2xl font-bold">{organization.data.incidents_count || 0}</div>
                                     <div className="text-sm text-muted-foreground">Incidents</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{organization.maintenances_count || 0}</div>
+                                    <div className="text-2xl font-bold">{organization.data.maintenances_count || 0}</div>
                                     <div className="text-sm text-muted-foreground">Maintenances</div>
                                 </div>
                             </div>
@@ -238,7 +245,7 @@ export default function OrganizationSettings({
                                 Team Management
                             </CardTitle>
                             <CardDescription>
-                                Manage team members and their roles.
+                                Manage team members, roles, and permissions.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -253,6 +260,12 @@ export default function OrganizationSettings({
                                     <Link href={route('organization.invite')}>
                                         <UserPlus className="h-4 w-4 mr-2" />
                                         Invite Member
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <Link href="/teams">
+                                        <Settings className="h-4 w-4 mr-2" />
+                                        Manage Teams
                                     </Link>
                                 </Button>
                             </div>

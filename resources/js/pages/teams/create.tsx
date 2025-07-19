@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import React from 'react';
 import AppLayout from '@/layouts/app-layout';
+import { useToast } from '@/hooks/use-toast';
 
 const colorOptions = [
     { value: '#ef4444', label: 'Red' },
@@ -19,6 +20,8 @@ const colorOptions = [
 ];
 
 export default function TeamCreate() {
+    const toast = useToast();
+    
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
@@ -27,7 +30,14 @@ export default function TeamCreate() {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        post(route('teams.store'));
+        post(route('teams.store'), {
+            onSuccess: () => {
+                toast.success('Team created successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to create team. Please try again.');
+            },
+        });
     }
 
     const breadcrumbs = [

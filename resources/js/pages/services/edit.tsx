@@ -7,6 +7,7 @@ import React from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Service } from '@/types/service';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const statusOptions = [
   { value: 'operational', label: 'Operational' },
@@ -26,6 +27,8 @@ interface Props {
 }
 
 export default function ServiceEdit({ service, teams }: PageProps<Props>) {
+  const toast = useToast();
+  
   const { data, setData, patch, processing, errors } = useForm({
     name: service.data.name || '',
     description: service.data.description || '',
@@ -39,8 +42,11 @@ export default function ServiceEdit({ service, teams }: PageProps<Props>) {
     e.preventDefault();
     patch(route('services.update', service.data.id), {
       onSuccess: () => {
-        // Redirect to services index on success
-      }
+        toast.success('Service updated successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to update service. Please try again.');
+      },
     });
   }
   const breadcrumbs = [

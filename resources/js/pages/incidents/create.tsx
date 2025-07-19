@@ -9,6 +9,7 @@ import { Service } from '@/types/service';
 import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import React from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 const statusOptions = [
     { value: 'investigating', label: 'Investigating' },
@@ -31,6 +32,8 @@ interface Props {
 }
 
 export default function IncidentCreate({ services }: PageProps<Props>) {
+    const toast = useToast();
+    
     const { data, setData, post, processing, errors } = useForm({
         service_ids: [] as number[],
         title: '',
@@ -53,7 +56,14 @@ export default function IncidentCreate({ services }: PageProps<Props>) {
 
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        post('/incidents');
+        post('/incidents', {
+            onSuccess: () => {
+                toast.success('Incident created successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to create incident. Please try again.');
+            },
+        });
     }
 
     const breadcrumbs = [

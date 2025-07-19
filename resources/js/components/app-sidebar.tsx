@@ -29,19 +29,13 @@ export function AppSidebar() {
         navItems.push({ title: 'Teams', href: '/teams', icon: Users });
     }
 
-    // Add user management for users with manage_users permission
-    if (currentPermissions?.manage_users) {
-        navItems.push({ title: 'Users', href: '/users', icon: UserPlus });
-    }
-
-    // Add admin sections for owners and admins
-    if (currentRole === 'owner' || currentRole === 'admin') {
+    // Add admin sections for system admins, owners and admins
+    if (currentRole === 'system_admin' || currentRole === 'owner' || currentRole === 'admin') {
         navItems.push({ title: 'Organizations', href: route('admin.organizations.index'), icon: Shield });
-        navItems.push({ title: 'Admin Maintenance', href: route('admin.maintenance.index'), icon: ListChecks });
     }
 
     // Settings for users with organization management permissions or higher roles
-    if (currentPermissions?.manage_organization || currentRole === 'owner' || currentRole === 'admin') {
+    if (currentPermissions?.manage_organization || currentRole === 'owner' || currentRole === 'admin' || currentRole === 'system_admin') {
         navItems.push({ title: 'Settings', href: '/settings', icon: Settings });
     }
 

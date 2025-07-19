@@ -23,6 +23,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         $organization = $this->getCurrentOrganization();
 
+        // All users (including system admins) see data from their organization only
         $services = Service::forOrganization($organization->id)->with('incidents')->get();
         $incidents = Incident::forOrganization($organization->id)->latest()->take(10)->get();
         $incidentIds = $incidents->pluck('id');

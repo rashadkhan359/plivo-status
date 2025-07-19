@@ -63,7 +63,7 @@ export function ServiceStatusUpdate({ service, open, onOpenChange }: ServiceStat
   const [message, setMessage] = useState('');
   const [createIncident, setCreateIncident] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const { success, error } = useToast();
+  const toast = useToast();
 
   const currentStatus = statusOptions.find(option => option.value === service.status);
   const selectedStatus = statusOptions.find(option => option.value === status);
@@ -80,12 +80,13 @@ export function ServiceStatusUpdate({ service, open, onOpenChange }: ServiceStat
 
     router.patch(`/services/${service.id}/status`, updateData, {
       onSuccess: () => {
+        toast.success('Service status updated successfully!');
         onOpenChange(false);
         setMessage('');
         setCreateIncident(false);
       },
       onError: (errors) => {
-        error('Failed to update service status');
+        toast.error('Failed to update service status');
       },
       onFinish: () => {
         setUpdating(false);

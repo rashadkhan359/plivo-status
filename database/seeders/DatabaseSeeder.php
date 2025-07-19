@@ -14,8 +14,34 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Create system admin user
+        $systemAdmin = User::factory()->systemAdmin()->create([
+            'name' => 'System Admin',
+            'email' => 'admin@plivo-status.com',
+            'password' => bcrypt('password'),
+        ]);
+        
         // Create 3 organizations with complete multi-tenant structure
-        Organization::factory(3)->create()->each(function ($organization) {
+        $organizations = Organization::factory(3)->create();
+        
+        // Attach system admin to the first organization
+        $firstOrganization = $organizations->first();
+        $firstOrganization->users()->attach($systemAdmin->id, [
+            'role' => 'system_admin',
+            'permissions' => [
+                'manage_organization' => true,
+                'manage_users' => true,
+                'manage_teams' => true,
+                'manage_services' => true,
+                'manage_incidents' => true,
+                'manage_maintenance' => true,
+                'view_analytics' => true,
+                'system_admin' => true,
+            ],
+            'joined_at' => now(),
+        ]);
+        
+        $organizations->each(function ($organization) {
             
             // Create organization owner
             $owner = User::factory()->withOrganization($organization)->owner()->create();
@@ -26,7 +52,7 @@ class DatabaseSeeder extends Seeder
             // Attach owner to organization with proper role and permissions
             $organization->users()->attach($owner->id, [
                 'role' => 'owner',
-                'permissions' => json_encode([
+                'permissions' => [
                     'manage_organization' => true,
                     'manage_users' => true,
                     'manage_teams' => true,
@@ -34,7 +60,7 @@ class DatabaseSeeder extends Seeder
                     'manage_incidents' => true,
                     'manage_maintenance' => true,
                     'view_analytics' => true,
-                ]),
+                ],
                 'joined_at' => now(),
             ]);
             
@@ -42,14 +68,14 @@ class DatabaseSeeder extends Seeder
             $admin = User::factory()->withOrganization($organization)->admin()->create();
             $organization->users()->attach($admin->id, [
                 'role' => 'admin',
-                'permissions' => json_encode([
+                'permissions' => [
                     'manage_users' => true,
                     'manage_teams' => true,
                     'manage_services' => true,
                     'manage_incidents' => true,
                     'manage_maintenance' => true,
                     'view_analytics' => true,
-                ]),
+                ],
                 'invited_by' => $owner->id,
                 'joined_at' => now(),
             ]);
@@ -59,12 +85,12 @@ class DatabaseSeeder extends Seeder
             foreach ($teamLeads as $teamLead) {
                 $organization->users()->attach($teamLead->id, [
                     'role' => 'team_lead',
-                    'permissions' => json_encode([
+                    'permissions' => [
                         'manage_teams' => true,
                         'manage_services' => true,
                         'manage_incidents' => true,
                         'manage_maintenance' => true,
-                    ]),
+                    ],
                     'invited_by' => $admin->id,
                     'joined_at' => now(),
                 ]);
@@ -75,11 +101,11 @@ class DatabaseSeeder extends Seeder
             foreach ($members as $member) {
                 $organization->users()->attach($member->id, [
                     'role' => 'member',
-                    'permissions' => json_encode([
+                    'permissions' => [
                         'manage_services' => false,
                         'manage_incidents' => true,
                         'manage_maintenance' => false,
-                    ]),
+                    ],
                     'invited_by' => $admin->id,
                     'joined_at' => now(),
                 ]);

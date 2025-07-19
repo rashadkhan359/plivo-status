@@ -16,6 +16,9 @@ class OrganizationContext
      */
     public function handle(Request $request, Closure $next)
     {
+        // Debug: Check if middleware is being called
+        // dd('OrganizationContext middleware called', $request->url());
+        
         $user = Auth::user();
         
         // Allow guest access for public routes
@@ -23,17 +26,28 @@ class OrganizationContext
             return $next($request);
         }
 
+        // System admins still need organization context for security
+        // They should work within their own organization, not see all organizations
+
         // Get the user's current organization
         $organization = $this->getCurrentOrganization($user, $request);
+        
+        // Debug: Check what organization we found (uncomment to debug)
+        // dd([
+        //     'user_id' => $user->id,
+        //     'organization' => $organization ? $organization->toArray() : null,
+        //     'user_organizations' => $user->organizations()->get()->toArray(),
+        //     'user_organizations_active' => $user->organizations()->wherePivot('is_active', true)->get()->toArray(),
+        // ]);
         
         if (!$organization) {
             return $this->handleNoOrganizationAccess($request, $user);
         }
 
-        // Set organization context globally
+        // Set organization context globally (for backward compatibility)
         $this->setOrganizationContext($organization, $user);
         
-        // Add organization data to request
+        // Add organization data to request (primary method)
         $request->merge(['current_organization' => $organization]);
         
         return $next($request);
@@ -69,11 +83,17 @@ class OrganizationContext
             }
         }
 
-        // Get user's primary active organization
-        return $user->organizations()
+        // Get user's primary active organization (simplified query)
+        $organization = $user->organizations()
             ->wherePivot('is_active', true)
-            ->orderBy('organization_user.created_at')
             ->first();
+            
+        // If no active organization found, try without the is_active filter
+        if (!$organization) {
+            $organization = $user->organizations()->first();
+        }
+        
+        return $organization;
     }
 
     /**
@@ -115,11 +135,16 @@ class OrganizationContext
         }
     }
 
+
+
     /**
      * Set organization context globally
      */
     protected function setOrganizationContext(Organization $organization, $user)
     {
+        // Debug: Check if organization is being set
+        // dd('Setting organization context', $organization->toArray());
+        
         // Make organization available throughout the application
         App::instance('current_organization', $organization);
         
@@ -133,7 +158,22 @@ class OrganizationContext
             
         if ($userOrganization) {
             $role = $userOrganization->pivot->role;
-            $permissions = json_decode($userOrganization->pivot->permissions ?? '[]', true);
+            $permissions = $userOrganization->pivot->permissions ?? [];
+            
+            // For system admins, override role but keep organization context
+            if ($user->isSystemAdmin()) {
+                $role = 'system_admin';
+                $permissions = [
+                    'manage_organization' => true,
+                    'manage_users' => true,
+                    'manage_teams' => true,
+                    'manage_services' => true,
+                    'manage_incidents' => true,
+                    'manage_maintenance' => true,
+                    'view_analytics' => true,
+                    'system_admin' => true,
+                ];
+            }
             
             // Share user's role and permissions
             View::share('currentRole', $role);

@@ -20,10 +20,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $password
  * @property int $organization_id
  * @property string $role
+ * @property bool $is_system_admin
  * @property \Illuminate\Support\Carbon $created_at
  * @property \Illuminate\Support\Carbon $updated_at
  *
  * @method static \Database\Factories\UserFactory factory(...$parameters)
+ * 
  */
 class User extends Authenticatable
 {
@@ -41,6 +43,7 @@ class User extends Authenticatable
         'password',
         'organization_id',
         'role',
+        'is_system_admin',
     ];
 
     /**
@@ -64,6 +67,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'string',
+            'is_system_admin' => 'boolean',
         ];
     }
 
@@ -83,7 +87,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Organization::class)
                     ->withPivot('role', 'permissions', 'is_active', 'invited_by', 'joined_at')
-                    ->withTimestamps();
+                    ->withTimestamps()
+                    ->using(OrganizationUser::class);
     }
 
     /**
@@ -258,6 +263,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is a system admin.
+     */
+    public function isSystemAdmin(): bool
+    {
+        return $this->is_system_admin;
+    }
+
+    /**
      * Get all permissions for a user in an organization.
      */
     public function getPermissionsInOrganization(Organization $organization): array
@@ -272,6 +285,6 @@ class User extends Authenticatable
     public function hasPermissionInOrganization(Organization $organization, string $permission): bool
     {
         $permissions = $this->getPermissionsInOrganization($organization);
-        return in_array($permission, $permissions);
+        return isset($permissions[$permission]) && $permissions[$permission] === true;
     }
 }

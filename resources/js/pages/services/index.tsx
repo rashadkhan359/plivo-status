@@ -9,16 +9,24 @@ import { Service, Team } from '@/types/service';
 import { Head, Link, router } from '@inertiajs/react';
 import { Edit, Trash2, Zap, Plus, Wrench, Users, EyeOff } from 'lucide-react';
 import React from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
     services: {
         data: Service[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        links: Array<{ url: string | null; label: string; active: boolean }>;
     };
     teams: Team[];
     canCreate: boolean;
 }
 
 export default function ServiceIndex({ services, teams, canCreate }: PageProps<Props>) {
+    const toast = useToast();
+    
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [serviceToDelete, setServiceToDelete] = React.useState<Service | null>(null);
     const [deleting, setDeleting] = React.useState(false);
@@ -40,6 +48,12 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
         if (!serviceToDelete) return;
         setDeleting(true);
         router.delete(`/services/${serviceToDelete.id}`, {
+            onSuccess: () => {
+                toast.success('Service deleted successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to delete service. Please try again.');
+            },
             onFinish: () => {
                 setDeleting(false);
                 setDeleteDialogOpen(false);
@@ -143,66 +157,96 @@ export default function ServiceIndex({ services, teams, canCreate }: PageProps<P
                             )}
                         </div>
                     ) : (
-                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredServices.map((service) => (
-                                <Card key={service.id} className="flex flex-col p-6 hover:shadow-md transition-shadow duration-200">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <h3 className="font-semibold text-lg truncate">{service.name}</h3>
-                                                {service.visibility === 'private' && (
-                                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <>
+                            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                                {filteredServices.map((service) => (
+                                    <Card key={service.id} className="flex flex-col p-6 hover:shadow-md transition-shadow duration-200">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <h3 className="font-semibold text-lg truncate">{service.name}</h3>
+                                                    {service.visibility === 'private' && (
+                                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                                                    {service.description || 'No description provided'}
+                                                </p>
+                                                
+                                                {/* Team Badge */}
+                                                {service.team ? (
+                                                    <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                                                        <div 
+                                                            className="w-2 h-2 rounded-full" 
+                                                            style={{ backgroundColor: service.team.color || '#64748b' }}
+                                                        />
+                                                        <Users className="h-3 w-3" />
+                                                        {service.team.name}
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="outline" className="w-fit">
+                                                        Unassigned
+                                                    </Badge>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                                                {service.description || 'No description provided'}
-                                            </p>
-                                            
-                                            {/* Team Badge */}
-                                            {service.team ? (
-                                                <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                                                    <div 
-                                                        className="w-2 h-2 rounded-full" 
-                                                        style={{ backgroundColor: service.team.color || '#64748b' }}
-                                                    />
-                                                    <Users className="h-3 w-3" />
-                                                    {service.team.name}
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="w-fit">
-                                                    Unassigned
-                                                </Badge>
-                                            )}
+                                            <StatusBadge status={service.status} />
                                         </div>
-                                        <StatusBadge status={service.status} />
-                                    </div>
-                                    
-                                    <div className="flex gap-2 mt-auto pt-4">
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => handleStatusUpdateClick(service)}
-                                            className="flex items-center gap-2 flex-1"
-                                        >
-                                            <Zap className="h-4 w-4" />
-                                            Update Status
-                                        </Button>
-                                        <Link href={`/services/${service.id}/edit`}>
-                                            <Button size="sm" variant="outline">
-                                                <Edit className="h-4 w-4" />
+                                        
+                                        <div className="flex gap-2 mt-auto pt-4">
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                onClick={() => handleStatusUpdateClick(service)}
+                                                className="flex items-center gap-2 flex-1"
+                                            >
+                                                <Zap className="h-4 w-4" />
+                                                Update Status
                                             </Button>
-                                        </Link>
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            onClick={() => handleDeleteClick(service)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                            <Link href={`/services/${service.id}/edit`}>
+                                                <Button size="sm" variant="outline">
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                            </Link>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                onClick={() => handleDeleteClick(service)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </Card>
+                                ))}
+                            </div>
+
+                            {/* Pagination */}
+                            {services.last_page > 1 && (
+                                <div className="flex items-center justify-between mt-6">
+                                    <div className="text-sm text-muted-foreground">
+                                        Showing {((services.current_page - 1) * services.per_page) + 1} to{' '}
+                                        {Math.min(services.current_page * services.per_page, services.total)} of{' '}
+                                        {services.total} results
                                     </div>
-                                </Card>
-                            ))}
-                        </div>
+                                    <div className="flex items-center space-x-2">
+                                        {services.links.map((link, index) => (
+                                            <Button
+                                                key={index}
+                                                variant={link.active ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (link.url) {
+                                                        router.get(link.url);
+                                                    }
+                                                }}
+                                                disabled={!link.url}
+                                            >
+                                                {link.label.replace('&laquo;', '«').replace('&raquo;', '»')}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
 
                     {/* Dialogs */}

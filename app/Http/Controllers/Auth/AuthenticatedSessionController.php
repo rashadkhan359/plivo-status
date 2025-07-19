@@ -34,6 +34,11 @@ class AuthenticatedSessionController extends Controller
         
         $user = Auth::user();
         
+        // System admins don't need organization access
+        if ($user->isSystemAdmin()) {
+            return redirect()->route('dashboard');
+        }
+        
         // Check if user has access to any organization
         $hasOrganizationAccess = $this->verifyOrganizationAccess($user);
         

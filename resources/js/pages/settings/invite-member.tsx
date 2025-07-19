@@ -26,7 +26,7 @@ type InviteForm = {
 };
 
 export default function InviteMember({ organization }: InviteMemberProps) {
-    useToast(); // Initialize toast notifications
+    const toast = useToast();
     const { data, setData, post, processing, errors, reset } = useForm<InviteForm>({
         name: '',
         email: '',
@@ -39,7 +39,11 @@ export default function InviteMember({ organization }: InviteMemberProps) {
         post(route('organization.invite.store'), {
             preserveScroll: true,
             onSuccess: () => {
+                toast.success('Invitation sent successfully!');
                 reset();
+            },
+            onError: () => {
+                toast.error('Failed to send invitation. Please try again.');
             },
         });
     };

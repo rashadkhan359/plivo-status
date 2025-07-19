@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Team } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 interface TeamEditProps {
     team: Team;
@@ -22,6 +23,8 @@ type TeamForm = {
 };
 
 export default function TeamEdit({ team }: TeamEditProps) {
+    const toast = useToast();
+    
     const { data, setData, put, processing, errors, reset } = useForm<TeamForm>({
         name: team.name,
         description: team.description || '',
@@ -31,6 +34,12 @@ export default function TeamEdit({ team }: TeamEditProps) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         put(route('teams.update', team.id), {
+            onSuccess: () => {
+                toast.success('Team updated successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to update team. Please try again.');
+            },
             preserveScroll: true,
         });
     };

@@ -10,6 +10,7 @@ import HeadingSmall from '@/components/heading-small';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -19,6 +20,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Password() {
+    const toast = useToast();
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
 
@@ -33,8 +35,12 @@ export default function Password() {
 
         put(route('password.update'), {
             preserveScroll: true,
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                toast.success('Password updated successfully!');
+                reset();
+            },
             onError: (errors) => {
+                toast.error('Failed to update password. Please check your current password and try again.');
                 if (errors.password) {
                     reset('password', 'password_confirmation');
                     passwordInput.current?.focus();

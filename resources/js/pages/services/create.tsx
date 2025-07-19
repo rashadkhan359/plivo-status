@@ -8,6 +8,7 @@ import React from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { Service, Team } from '@/types/service';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
     teams: Team[];
@@ -26,6 +27,8 @@ const visibilityOptions = [
 ];
 
 export default function ServiceCreate({ teams }: PageProps<Props>) {
+  const toast = useToast();
+  
   const { data, setData, post, processing, errors } = useForm<{
     name: string;
     description: string;
@@ -44,7 +47,14 @@ export default function ServiceCreate({ teams }: PageProps<Props>) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    post(route('services.store'));
+    post(route('services.store'), {
+      onSuccess: () => {
+        toast.success('Service created successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to create service. Please try again.');
+      },
+    });
   }
 
   const breadcrumbs = [

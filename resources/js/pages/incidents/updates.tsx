@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import InputError from '@/components/input-error';
 import { IncidentTimeline } from '@/components/incident-timeline';
 import { IncidentUpdate } from '@/types/incident-update';
+import { useToast } from '@/hooks/use-toast';
 
 type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved';
 
@@ -53,6 +54,8 @@ type UpdateForm = {
 };
 
 export default function IncidentUpdates({ incident, updates }: PageProps<Props>) {
+    const toast = useToast();
+    
     const { data, setData, post, processing, errors, reset } = useForm<UpdateForm>({
         message: '',
         status: incident.status,
@@ -60,14 +63,13 @@ export default function IncidentUpdates({ incident, updates }: PageProps<Props>)
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        console.log('Submitting update:', data);
         post(route('incidents.updates.store', incident.id), {
             onSuccess: () => {
-                console.log('Update submitted successfully');
+                toast.success('Update posted successfully!');
                 reset('message');
             },
             onError: (errors) => {
-                console.log('Update submission errors:', errors);
+                toast.error('Failed to post update. Please try again.');
             },
         });
     };

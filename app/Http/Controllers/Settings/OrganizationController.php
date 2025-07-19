@@ -63,29 +63,47 @@ class OrganizationController extends Controller
     public function team(): Response
     {
         $user = Auth::user();
-        $organization = $user->organization;
+        $organization = $this->getCurrentOrganization();
 
         $this->authorize('manageUsers', $organization);
 
-        // Get users from both the new pivot table and legacy organization_id field
-        $members = $organization->users()->orderBy('created_at')->get();
+        // Get users with pivot data from organization_user table
+        $members = $organization->users()
+            ->withPivot('role', 'joined_at')
+            ->orderBy('organization_user.joined_at', 'desc')
+            ->get()
+            ->map(function ($member) {
+                // Add role from pivot to member object for frontend
+                $member->role = $member->pivot->role;
+                $member->joined_at = $member->pivot->joined_at;
+                return $member;
+            });
+
+        // Get role permissions from pivot table
+        $rolePermissions = [];
+        $roles = ['owner', 'admin', 'member'];
         
-        // If no users found in pivot table, fallback to legacy relationship
-        if ($members->isEmpty()) {
-            $members = User::where('organization_id', $organization->id)->orderBy('created_at')->get();
+        foreach ($roles as $role) {
+            $roleUsers = $organization->users()->wherePivot('role', $role)->get();
+            if ($roleUsers->isNotEmpty()) {
+                $permissions = json_decode($roleUsers->first()->pivot->permissions ?? '[]', true);
+                $rolePermissions[$role] = [
+                    'manage_organization' => in_array('manage_organization', $permissions),
+                    'manage_users' => in_array('manage_users', $permissions),
+                    'manage_teams' => in_array('manage_teams', $permissions),
+                    'manage_services' => in_array('manage_services', $permissions),
+                    'manage_incidents' => in_array('manage_incidents', $permissions),
+                    'manage_maintenance' => in_array('manage_maintenance', $permissions),
+                    'view_analytics' => in_array('view_analytics', $permissions),
+                ];
+            }
         }
-        
-        // Debug: Log the members data
-        \Illuminate\Support\Facades\Log::info('Organization team members:', [
-            'organization_id' => $organization->id,
-            'members_count' => $members->count(),
-            'members_data' => $members->toArray()
-        ]);
 
         return Inertia::render('settings/organization-team', [
             'organization' => new OrganizationResource($organization),
             'members' => \App\Http\Resources\UserResource::collection($members),
             'currentUser' => new \App\Http\Resources\UserResource($user),
+            'rolePermissions' => $rolePermissions,
         ]);
     }
 
@@ -162,26 +180,35 @@ class OrganizationController extends Controller
     public function updateMemberRole(Request $request): RedirectResponse
     {
         $user = Auth::user();
-        $organization = $user->organization;
+        $organization = $this->getCurrentOrganization();
 
         $this->authorize('manageUsers', $organization);
 
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:admin,member',
+            'role' => 'required|in:admin,member,owner',
         ]);
 
-        $member = $organization->users()->findOrFail($validated['user_id']);
+        // Check if user is in the organization
+        $member = $organization->users()->where('users.id', $validated['user_id'])->first();
+        if (!$member) {
+            return back()->withErrors(['user_id' => 'User is not a member of this organization.']);
+        }
 
-        // Prevent users from demoting themselves if they're the only admin
+        // Prevent users from demoting themselves if they're the only admin/owner
         if ($member->id === $user->id && $validated['role'] === 'member') {
-            $adminCount = $organization->users()->where('role', 'admin')->count();
+            $adminCount = $organization->users()
+                ->wherePivotIn('role', ['admin', 'owner'])
+                ->count();
             if ($adminCount <= 1) {
                 return back()->withErrors(['role' => 'Cannot demote the only admin of the organization.']);
             }
         }
 
-        $member->update(['role' => $validated['role']]);
+        // Update role in pivot table
+        $organization->users()->updateExistingPivot($validated['user_id'], [
+            'role' => $validated['role']
+        ]);
 
         return back()->with('success', 'Member role updated successfully.');
     }
@@ -192,7 +219,7 @@ class OrganizationController extends Controller
     public function removeMember(Request $request): RedirectResponse
     {
         $user = Auth::user();
-        $organization = $user->organization;
+        $organization = $this->getCurrentOrganization();
 
         $this->authorize('manageUsers', $organization);
 
@@ -200,18 +227,58 @@ class OrganizationController extends Controller
             'user_id' => 'required|exists:users,id',
         ]);
 
-        $member = $organization->users()->findOrFail($validated['user_id']);
+        // Check if user is in the organization
+        $member = $organization->users()->where('users.id', $validated['user_id'])->first();
+        if (!$member) {
+            return back()->withErrors(['user_id' => 'User is not a member of this organization.']);
+        }
 
-        // Prevent users from removing themselves if they're the only admin
+        // Prevent users from removing themselves if they're the only admin/owner
         if ($member->id === $user->id) {
-            $adminCount = $organization->users()->where('role', 'admin')->count();
+            $adminCount = $organization->users()
+                ->wherePivotIn('role', ['admin', 'owner'])
+                ->count();
             if ($adminCount <= 1) {
                 return back()->withErrors(['user_id' => 'Cannot remove the only admin of the organization.']);
             }
         }
 
-        $member->delete();
+        // Remove user from organization (detach from pivot table)
+        $organization->users()->detach($validated['user_id']);
 
         return back()->with('success', 'Member removed from organization successfully.');
+    }
+
+    /**
+     * Update role permissions for the organization.
+     */
+    public function updateRolePermissions(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+        $organization = $this->getCurrentOrganization();
+
+        $this->authorize('manageUsers', $organization);
+
+        $validated = $request->validate([
+            'role' => 'required|string|in:owner,admin,member',
+            'permissions' => 'required|array',
+            'permissions.*' => 'boolean',
+        ]);
+
+        // Only owners can update role permissions
+        if (!in_array($user->role, ['owner'])) {
+            return back()->withErrors(['role' => 'Only organization owners can update role permissions.']);
+        }
+
+        // Update permissions for all users with this role in the organization
+        $permissionKeys = array_keys(array_filter($validated['permissions']));
+        
+        $organization->users()
+            ->wherePivot('role', $validated['role'])
+            ->updateExistingPivot($organization->users()->pluck('users.id')->toArray(), [
+                'permissions' => json_encode($permissionKeys)
+            ]);
+
+        return back()->with('success', 'Role permissions updated successfully.');
     }
 } 

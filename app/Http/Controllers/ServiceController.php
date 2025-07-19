@@ -32,6 +32,9 @@ class ServiceController extends Controller
         // Get services based on user's role and team memberships
         $services = $this->getAccessibleServices($user, $organization);
         
+        // Apply pagination
+        $services = $services->paginate(12)->withQueryString();
+        
         $teams = $organization->teams()->get();
         
         return Inertia::render('services/index', [

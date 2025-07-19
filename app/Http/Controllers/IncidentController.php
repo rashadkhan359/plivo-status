@@ -33,6 +33,9 @@ class IncidentController extends Controller
         // Get incidents accessible to the user
         $incidents = $this->getAccessibleIncidents($user, $organization);
         
+        // Apply pagination
+        $incidents = $incidents->paginate(15)->withQueryString();
+        
         return Inertia::render('incidents/index', [
             'incidents' => IncidentResource::collection($incidents),
             'canCreate' => $user->can('create', Incident::class),
@@ -53,7 +56,7 @@ class IncidentController extends Controller
         $services = $this->getAccessibleServices($user, $organization);
         
         return Inertia::render('incidents/create', [
-            'services' => ServiceResource::collection($services),
+            'services' => ServiceResource::collection($services->get()),
         ]);
     }
 
@@ -146,7 +149,7 @@ class IncidentController extends Controller
         
         return Inertia::render('incidents/edit', [
             'incident' => new IncidentResource($incident->load('services')),
-            'services' => ServiceResource::collection($services),
+            'services' => ServiceResource::collection($services->get()),
         ]);
     }
 
@@ -263,6 +266,11 @@ class IncidentController extends Controller
      */
     protected function getAccessibleIncidents($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return \App\Models\Incident::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->incidents()->with(['services', 'creator', 'resolver']);
         
         // If user is not admin/owner, filter by their team's services
@@ -280,7 +288,7 @@ class IncidentController extends Controller
             });
         }
         
-        return $query->latest()->get();
+        return $query->latest();
     }
 
     /**
@@ -288,6 +296,11 @@ class IncidentController extends Controller
      */
     protected function getAccessibleServices($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return \App\Models\Service::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->services()->with(['team']);
         
         // If user is not admin/owner, filter by visibility and team membership
@@ -305,6 +318,6 @@ class IncidentController extends Controller
             });
         }
         
-        return $query->orderBy('order')->get();
+        return $query->orderBy('order');
     }
 } 

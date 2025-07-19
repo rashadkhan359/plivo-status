@@ -20,9 +20,18 @@ export type User = {
 
 export type Organization = {
     id: number;
+    domain: string;
+    services_count: number;
+    incidents_count: number;
+    maintenances_count: number;
+    users: {
+        data: User[];
+    } | User[];
     name: string;
     slug: string;
     created_at: string;
     users_count?: number;
-    users?: User[];
+    incidents?: any[];
+    maintenances?: any[];
+    services?: any[];
 };

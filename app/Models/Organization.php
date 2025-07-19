@@ -60,14 +60,16 @@ class Organization extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+
     /**
      * Get the users that belong to the organization.
      */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-                    ->withPivot('role', 'permissions', 'invited_by', 'joined_at')
-                    ->withTimestamps();
+                    ->withPivot('role', 'permissions', 'is_active', 'invited_by', 'joined_at')
+                    ->withTimestamps()
+                    ->using(OrganizationUser::class);
     }
 
     /**

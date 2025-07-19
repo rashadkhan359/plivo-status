@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -20,16 +19,28 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
+        $user = Auth::user();
         
-        // Get users in the organization
-        $users = $organization->users()
-            ->with(['teams'])
-            ->get();
+        // System admins can see all users across all organizations
+        if ($user->isSystemAdmin()) {
+            $users = User::with(['teams', 'organizations'])->get();
+            $teams = \App\Models\Team::all();
+        } else {
+            // Regular users see only their organization's users
+            if (!$organization) {
+                $users = collect();
+                $teams = collect();
+            } else {
+                $users = $organization->users()->with(['teams'])->get();
+                $teams = $organization->teams()->get();
+            }
+        }
         
         return Inertia::render('users/index', [
             'users' => $users,
-            'canCreate' => Auth::user()->can('create', User::class),
+            'teams' => $teams,
+            'canCreate' => $user->can('create', User::class),
         ]);
     }
 
@@ -56,20 +67,47 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getOrganizationForResource($request);
+        $user = Auth::user();
+        
+        // For system admins, require organization_id
+        if ($user->isSystemAdmin() && !$organization) {
+            abort(422, 'Organization ID is required for system admins.');
+        }
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => 'required|in:member,team_lead,admin',
             'permissions' => 'nullable|array',
         ]);
         
-        $user = User::create([
+        // Check if user already exists
+        $existingUser = User::where('email', $validated['email'])->first();
+        
+        if ($existingUser) {
+            // If user exists, just add them to the organization
+            $permissions = $this->getDefaultPermissions($validated['role']);
+            if (isset($validated['permissions'])) {
+                $permissions = array_merge($permissions, $validated['permissions']);
+            }
+            
+            $existingUser->organizations()->attach($organization->id, [
+                'role' => $validated['role'],
+                'permissions' => $permissions,
+                'joined_at' => now(),
+                'is_active' => true,
+                'invited_by' => Auth::id(),
+            ]);
+            
+            return redirect()->route('users.index')->with('success', 'User added to organization.');
+        }
+        
+        // Create new user
+        $newUser = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make('password'), // Default password, user will reset
             'organization_id' => $organization->id, // Backward compatibility
             'role' => $validated['role'], // Backward compatibility
         ]);
@@ -80,14 +118,17 @@ class UserController extends Controller
             $permissions = array_merge($permissions, $validated['permissions']);
         }
         
-        $user->organizations()->attach($organization->id, [
+        $newUser->organizations()->attach($organization->id, [
             'role' => $validated['role'],
             'permissions' => $permissions,
             'joined_at' => now(),
             'is_active' => true,
+            'invited_by' => Auth::id(),
         ]);
         
-        return redirect()->route('users.index')->with('success', 'User created.');
+        // TODO: Send invitation email to user
+        
+        return redirect()->route('users.index')->with('success', 'User invited successfully.');
     }
 
     /**
@@ -97,7 +138,23 @@ class UserController extends Controller
     {
         $this->authorize('changeRole', $user);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
+        $currentUser = Auth::user();
+        
+        // For system admins, allow updating any user's role
+        if ($currentUser->isSystemAdmin()) {
+            // System admins need to specify which organization to update
+            $organizationId = $request->input('organization_id');
+            if (!$organizationId) {
+                abort(422, 'Organization ID is required for system admins.');
+            }
+            $organization = \App\Models\Organization::findOrFail($organizationId);
+        } else {
+            // Regular users can only update within their organization
+            if (!$organization) {
+                abort(403, 'No organization context available.');
+            }
+        }
         
         $validated = $request->validate([
             'role' => 'required|in:member,team_lead,admin',
@@ -129,7 +186,23 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
         
-        $organization = App::get('current_organization');
+        $organization = $this->getCurrentOrganization();
+        $currentUser = Auth::user();
+        
+        // For system admins, allow removing from any organization
+        if ($currentUser->isSystemAdmin()) {
+            // System admins need to specify which organization to remove from
+            $organizationId = request()->input('organization_id');
+            if (!$organizationId) {
+                abort(422, 'Organization ID is required for system admins.');
+            }
+            $organization = \App\Models\Organization::findOrFail($organizationId);
+        } else {
+            // Regular users can only remove from their organization
+            if (!$organization) {
+                abort(403, 'No organization context available.');
+            }
+        }
         
         // Remove from organization
         $user->organizations()->detach($organization->id);

@@ -8,6 +8,7 @@ use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\App;
 use App\Models\Organization;
+use App\Models\User;
 use App\Models\Service;
 use App\Models\Incident;
 use App\Models\Maintenance;
@@ -20,21 +21,27 @@ class Controller extends BaseController
     /**
      * Get the current organization from the middleware context.
      * 
-     * @return Organization
+     * @return Organization|null
      * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
-    protected function getCurrentOrganization(): Organization
+    protected function getCurrentOrganization(): ?Organization
     {
+        $user = Auth::user();
+        
         try {
             return App::make('current_organization');
         } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
             // Fallback to legacy organization for backward compatibility
-            $user = Auth::user();
             if ($user && $user->organization) {
                 return $user->organization;
             }
             
-            abort(403, 'You do not have access to any organization.');
+            // If no organization is bound, user needs organization access
+            if (!$user || !($user instanceof User)) {
+                abort(403, 'You do not have access to any organization.');
+            }
+            
+            return null;
         }
     }
 
@@ -86,8 +93,15 @@ class Controller extends BaseController
         $user = Auth::user();
         if (!$user) return false;
         
+        // System admins have all permissions
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+        
         try {
             $organization = $this->getCurrentOrganization();
+            if (!$organization) return false;
+            
             $userOrg = $user->organizations()
                 ->where('organizations.id', $organization->id)
                 ->first();
@@ -111,8 +125,15 @@ class Controller extends BaseController
         $user = Auth::user();
         if (!$user) return null;
         
+        // System admins have system_admin role
+        if ($user->isSystemAdmin()) {
+            return 'system_admin';
+        }
+        
         try {
             $organization = $this->getCurrentOrganization();
+            if (!$organization) return null;
+            
             $userOrg = $user->organizations()
                 ->where('organizations.id', $organization->id)
                 ->first();
@@ -128,14 +149,19 @@ class Controller extends BaseController
      */
     protected function getAccessibleServices($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return \App\Models\Service::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->services();
         
         // Get user's role in the organization
         $userRole = $this->getCurrentRole();
         
-        if ($userRole === 'owner' || $userRole === 'admin') {
-            // Owners and admins see all services
-            return $query->with(['team', 'incidents'])->get();
+        if ($userRole === 'owner' || $userRole === 'admin' || $user->isSystemAdmin()) {
+            // Owners, admins, and system admins see all services in their organization
+            return $query->with(['team', 'incidents']);
         }
         
         // Members see services based on team memberships and visibility
@@ -145,7 +171,7 @@ class Controller extends BaseController
             $q->where('visibility', 'public')
               ->orWhereIn('team_id', $userTeamIds)
               ->orWhereNull('team_id'); // Unassigned services are visible to all
-        })->with(['team', 'incidents'])->get();
+        })->with(['team', 'incidents']);
     }
 
     /**
@@ -153,23 +179,33 @@ class Controller extends BaseController
      */
     protected function getAccessibleIncidents($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return \App\Models\Incident::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->incidents();
         
         // Get user's role in the organization
         $userRole = $this->getCurrentRole();
         
-        if ($userRole === 'owner' || $userRole === 'admin') {
-            // Owners and admins see all incidents
-            return $query->with(['services', 'creator', 'resolver'])->latest()->get();
+        if ($userRole === 'owner' || $userRole === 'admin' || $user->isSystemAdmin()) {
+            // Owners, admins, and system admins see all incidents in their organization
+            return $query->with(['services', 'creator', 'resolver'])->latest();
         }
         
         // Members see incidents for services they have access to
         $accessibleServices = $this->getAccessibleServices($user, $organization);
-        $serviceIds = $accessibleServices->pluck('id');
+        $serviceIds = $accessibleServices->pluck('id')->toArray();
+        
+        if (empty($serviceIds)) {
+            // If user has no accessible services, return empty query
+            return $query->whereRaw('1 = 0');
+        }
         
         return $query->whereHas('services', function ($q) use ($serviceIds) {
             $q->whereIn('services.id', $serviceIds);
-        })->with(['services', 'creator', 'resolver'])->latest()->get();
+        })->with(['services', 'creator', 'resolver'])->latest();
     }
 
     /**
@@ -177,24 +213,34 @@ class Controller extends BaseController
      */
     protected function getAccessibleMaintenances($user, $organization)
     {
+        // If no organization, return empty query
+        if (!$organization) {
+            return \App\Models\Maintenance::whereRaw('1 = 0'); // Return empty query builder
+        }
+        
         $query = $organization->maintenances();
         
         // Get user's role in the organization
         $userRole = $this->getCurrentRole();
         
-        if ($userRole === 'owner' || $userRole === 'admin') {
-            // Owners and admins see all maintenances
-            return $query->with(['service', 'creator'])->latest()->get();
+        if ($userRole === 'owner' || $userRole === 'admin' || $user->isSystemAdmin()) {
+            // Owners, admins, and system admins see all maintenances in their organization
+            return $query->with(['service', 'creator'])->latest();
         }
         
         // Members see maintenances for services they have access to
         $accessibleServices = $this->getAccessibleServices($user, $organization);
-        $serviceIds = $accessibleServices->pluck('id');
+        $serviceIds = $accessibleServices->pluck('id')->toArray();
+        
+        if (empty($serviceIds)) {
+            // If user has no accessible services, only show general maintenances
+            return $query->whereNull('service_id')->with(['service', 'creator'])->latest();
+        }
         
         return $query->where(function ($q) use ($serviceIds) {
             $q->whereIn('service_id', $serviceIds)
               ->orWhereNull('service_id'); // General maintenances are visible to all
-        })->with(['service', 'creator'])->latest()->get();
+        })->with(['service', 'creator'])->latest();
     }
 
     /**
@@ -209,24 +255,7 @@ class Controller extends BaseController
         }
     }
 
-    /**
-     * Validate that services belong to the current organization
-     */
-    protected function validateServicesBelongToOrganization(array $serviceIds, $organizationId = null)
-    {
-        $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
-        
-        $validServices = Service::whereIn('id', $serviceIds)
-            ->where('organization_id', $organizationId)
-            ->pluck('id')
-            ->toArray();
-            
-        if (count($validServices) !== count($serviceIds)) {
-            abort(422, 'Some selected services do not belong to your organization.');
-        }
-        
-        return $validServices;
-    }
+
 
     /**
      * Validate that a team belongs to the current organization
@@ -246,5 +275,48 @@ class Controller extends BaseController
         }
         
         return $team;
+    }
+
+    /**
+     * Get the organization for creating/updating resources
+     * For system admins, this returns the organization from the request or a default
+     */
+    protected function getOrganizationForResource($request = null)
+    {
+        $user = Auth::user();
+        
+        // System admins can work with any organization
+        if ($user->isSystemAdmin()) {
+            // If organization_id is provided in request, use that
+            if ($request && $request->has('organization_id')) {
+                return Organization::findOrFail($request->organization_id);
+            }
+            
+            // For system admins without specific organization, return null
+            // This will be handled by the specific controller logic
+            return null;
+        }
+        
+        // Regular users work with their current organization
+        return $this->getCurrentOrganization();
+    }
+
+    /**
+     * Validate that services belong to the current organization
+     */
+    protected function validateServicesBelongToOrganization(array $serviceIds, $organizationId = null)
+    {
+        $organizationId = $organizationId ?? $this->getCurrentOrganization()->id;
+        
+        $validServices = Service::whereIn('id', $serviceIds)
+            ->where('organization_id', $organizationId)
+            ->pluck('id')
+            ->toArray();
+            
+        if (count($validServices) !== count($serviceIds)) {
+            abort(422, 'Some selected services do not belong to your organization.');
+        }
+        
+        return $validServices;
     }
 }

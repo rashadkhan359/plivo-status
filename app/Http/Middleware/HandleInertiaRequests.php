@@ -30,6 +30,60 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * Get permissions for a given role
+     */
+    private function getPermissionsForRole(string $role): array
+    {
+        return match ($role) {
+            'owner' => [
+                'manage_organization' => true,
+                'manage_users' => true,
+                'manage_teams' => true,
+                'manage_services' => true,
+                'manage_incidents' => true,
+                'manage_maintenance' => true,
+                'view_analytics' => true,
+            ],
+            'admin' => [
+                'manage_organization' => true,
+                'manage_users' => true,
+                'manage_teams' => true,
+                'manage_services' => true,
+                'manage_incidents' => true,
+                'manage_maintenance' => true,
+                'view_analytics' => true,
+            ],
+            'team_lead' => [
+                'manage_organization' => false,
+                'manage_users' => false,
+                'manage_teams' => true,
+                'manage_services' => true,
+                'manage_incidents' => true,
+                'manage_maintenance' => true,
+                'view_analytics' => true,
+            ],
+            'member' => [
+                'manage_organization' => false,
+                'manage_users' => false,
+                'manage_teams' => false,
+                'manage_services' => false,
+                'manage_incidents' => false,
+                'manage_maintenance' => false,
+                'view_analytics' => false,
+            ],
+            default => [
+                'manage_organization' => false,
+                'manage_users' => false,
+                'manage_teams' => false,
+                'manage_services' => false,
+                'manage_incidents' => false,
+                'manage_maintenance' => false,
+                'view_analytics' => false,
+            ],
+        };
+    }
+
+    /**
      * Define the props that are shared by default.
      *
      * @see https://inertiajs.com/shared-data
@@ -42,29 +96,72 @@ class HandleInertiaRequests extends Middleware
 
         $user = $request->user();
         
-        // Try to get current organization from container (set by OrganizationContext middleware)
-        $currentOrganization = null;
-        try {
-            $currentOrganization = App::make('current_organization');
-        } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
-            // Organization context not set (guest user or middleware not run)
-            $currentOrganization = null;
+        // Try to get current organization from request (set by OrganizationContext middleware)
+        $currentOrganization = $request->get('current_organization');
+        
+        // Fallback: Try to get from container if not in request
+        if (!$currentOrganization) {
+            try {
+                $currentOrganization = App::make('current_organization');
+            } catch (\Illuminate\Contracts\Container\BindingResolutionException $e) {
+                // Organization context not set (guest user or middleware not run)
+                $currentOrganization = null;
+            }
         }
+
+
         
         // Get user's role and permissions in current organization
         $currentRole = null;
         $currentPermissions = [];
         
-        if ($user && $currentOrganization) {
+        // Check if user is system admin first
+        if ($user && $user->isSystemAdmin()) {
+            $currentRole = 'system_admin';
+            $currentPermissions = [
+                'manage_organization' => true,
+                'manage_users' => true,
+                'manage_teams' => true,
+                'manage_services' => true,
+                'manage_incidents' => true,
+                'manage_maintenance' => true,
+                'view_analytics' => true,
+                'system_admin' => true,
+            ];
+        } elseif ($user && $currentOrganization) {
             $userOrganization = $user->organizations()
                 ->where('organizations.id', $currentOrganization->id)
                 ->first();
                 
             if ($userOrganization) {
-                $currentRole = $userOrganization->pivot->role;
-                $currentPermissions = $userOrganization->pivot->permissions ?? [];
+                $currentRole = $userOrganization->pivot->role ?? 'member';
+                $currentPermissions = $this->getPermissionsForRole($userOrganization->pivot->role ?? 'member');
             }
         }
+        
+        // Fallback: If no organization context, try to get user's first organization
+        if ($user && !$currentRole && !$user->isSystemAdmin()) {
+            $userOrganization = $user->organizations()->first();
+            if ($userOrganization) {
+                $currentRole = $userOrganization->pivot->role ?? 'member';
+                $currentPermissions = $this->getPermissionsForRole($userOrganization->pivot->role ?? 'member');
+                $currentOrganization = $currentOrganization ?? $userOrganization;
+            }
+        }
+
+        // Debug: Check what we're getting
+        // if ($user) {
+        //     dd([
+        //         'user_id' => $user->id,
+        //         'user_email' => $user->email,
+        //         'user_organization_id' => $user->organization_id, // Legacy field
+        //         'currentOrganization' => $currentOrganization ? $currentOrganization->toArray() : null,
+        //         'userOrganizations' => $user->organizations()->get()->toArray(),
+        //         'userOrganization' => $user && $currentOrganization ? $user->organizations()->where('organizations.id', $currentOrganization->id)->first() : null,
+        //         'currentRole' => $currentRole,
+        //         'currentPermissions' => $currentPermissions,
+        //     ]);
+        // }
 
         return [
             ...parent::share($request),
@@ -76,10 +173,12 @@ class HandleInertiaRequests extends Middleware
                 'currentRole' => $currentRole,
                 'currentPermissions' => $currentPermissions,
             ],
-            'ziggy' => fn (): array => [
-                ...(new Ziggy)->toArray(),
-                'location' => $request->url(),
-            ],
+            'ziggy' => function () use ($request): array {
+                return [
+                    ...(new Ziggy)->toArray(),
+                    'location' => $request->url(),
+                ];
+            },
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

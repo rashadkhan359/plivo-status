@@ -1,8 +1,7 @@
 import { Head, useForm, router, Link } from '@inertiajs/react';
-import { Users, UserPlus, Crown, Shield, Trash2, Edit } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { Users, UserPlus, Crown, Shield, Trash2 } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,58 +12,96 @@ import SettingsLayout from '@/layouts/settings/layout';
 import { Organization } from '@/types/organization';
 import { User } from '@/types/models';
 import AppLayout from '@/layouts/app-layout';
+import RolePermissionManager from '@/components/role-permission-manager';
 
 interface OrganizationTeamProps {
     organization: Organization;
-    members: User[] | any; // Allow any type for debugging
+    members: {
+        data: User[];
+    };
     currentUser: User;
+    rolePermissions: Record<string, Record<string, boolean>>;
 }
 
 export default function OrganizationTeam({
     organization,
     members,
-    currentUser
+    currentUser,
+    rolePermissions
 }: OrganizationTeamProps) {
-    useToast(); // Initialize toast notifications
-    const { patch, delete: destroy, processing } = useForm();
+    const toast = useToast();
+    console.log(rolePermissions);
+    console.log(members);
+    
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+    const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+    const [memberToRemove, setMemberToRemove] = useState<User | null>(null);
+    const [updatingRole, setUpdatingRole] = useState<number | null>(null);
 
-    // Debug: Log the members data structure
-    console.log('Members data:', members.data.length);
-    console.log('Members type:', typeof members);
-    console.log('Is array:', Array.isArray(members));
+    const inviteForm = useForm({
+        name: '',
+        email: '',
+        role: 'member',
+        message: '',
+    });
 
+    const handleInviteSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        inviteForm.post(route('organization.invite.store'), {
+            onSuccess: () => {
+                toast.success('Invitation sent successfully!');
+                setInviteDialogOpen(false);
+                inviteForm.reset();
+            },
+            onError: () => {
+                toast.error('Failed to send invitation. Please try again.');
+            },
+        });
+    };
+
+    const handleRemoveMember = (member: User) => {
+        setMemberToRemove(member);
+        setRemoveDialogOpen(true);
+    };
+
+    const confirmRemoveMember = () => {
+        if (!memberToRemove) return;
+        
+        router.delete(route('organization.team.remove'), {
+            data: { user_id: memberToRemove.id },
+            onSuccess: () => {
+                toast.success('Member removed from organization successfully!');
+                setRemoveDialogOpen(false);
+                setMemberToRemove(null);
+            },
+            onError: () => {
+                toast.error('Failed to remove member from organization. Please try again.');
+            },
+        });
+    };
 
     const updateRole = (userId: number, role: string) => {
+        setUpdatingRole(userId);
         router.patch(route('organization.team.role'), {
             user_id: userId,
             role,
         }, {
+            onSuccess: () => {
+                toast.success('Member role updated successfully!');
+                setUpdatingRole(null);
+            },
+            onError: () => {
+                toast.error('Failed to update member role. Please try again.');
+                setUpdatingRole(null);
+            },
             preserveScroll: true,
         });
     };
 
-    const removeMember = (userId: number) => {
-        if (confirm('Are you sure you want to remove this member from the organization?')) {
-            router.delete(route('organization.team.remove'), {
-                data: { user_id: userId },
-                preserveScroll: true,
-            });
-        }
-    };
-
-    const getRoleIcon = (role: string) => {
-        switch (role) {
-            case 'admin':
-                return <Crown className="h-4 w-4 text-yellow-500" />;
-            case 'member':
-                return <Shield className="h-4 w-4 text-blue-500" />;
-            default:
-                return <Users className="h-4 w-4 text-gray-500" />;
-        }
-    };
-
     const getRoleBadge = (role: string) => {
         switch (role) {
+            case 'owner':
+                return <Badge variant="default" className="bg-purple-100 text-purple-800">Owner</Badge>;
             case 'admin':
                 return <Badge variant="default" className="bg-yellow-100 text-yellow-800">Admin</Badge>;
             case 'member':
@@ -134,7 +171,7 @@ export default function OrganizationTeam({
                                                     <Select
                                                         value={member.role}
                                                         onValueChange={(value) => updateRole(member.id, value)}
-                                                        disabled={processing}
+                                                        disabled={updatingRole === member.id}
                                                     >
                                                         <SelectTrigger className="w-32">
                                                             <SelectValue />
@@ -142,14 +179,15 @@ export default function OrganizationTeam({
                                                         <SelectContent>
                                                             <SelectItem value="member">Member</SelectItem>
                                                             <SelectItem value="admin">Admin</SelectItem>
+                                                            <SelectItem value="owner">Owner</SelectItem>
                                                         </SelectContent>
                                                     </Select>
 
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => removeMember(member.id)}
-                                                        disabled={processing}
+                                                        onClick={() => handleRemoveMember(member)}
+                                                        disabled={updatingRole === member.id}
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -173,43 +211,94 @@ export default function OrganizationTeam({
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Role Permissions</CardTitle>
-                            <CardDescription>
-                                Understanding of different roles and their permissions.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Crown className="h-4 w-4 text-yellow-500" />
-                                        <span className="font-medium">Admin</span>
-                                    </div>
-                                    <ul className="text-sm text-muted-foreground space-y-1 ml-6">
-                                        <li>• Full access to all features</li>
-                                        <li>• Can manage team members</li>
-                                        <li>• Can update organization settings</li>
-                                        <li>• Can delete services and incidents</li>
-                                    </ul>
-                                </div>
+                    {currentUser.role === 'owner' && (
+                        <RolePermissionManager
+                        type="organization"
+                        entityId={organization.id}
+                        roles={[
+                            {
+                                role: 'owner',
+                                permissions: rolePermissions.owner || {
+                                    manage_organization: true,
+                                    manage_users: true,
+                                    manage_teams: true,
+                                    manage_services: true,
+                                    manage_incidents: true,
+                                    manage_maintenance: true,
+                                    view_analytics: true,
+                                },
+                                usersCount: members.data.filter((m: User) => m.role === 'owner').length,
+                            },
+                            {
+                                role: 'admin',
+                                permissions: rolePermissions.admin || {
+                                    manage_organization: true,
+                                    manage_users: true,
+                                    manage_teams: true,
+                                    manage_services: true,
+                                    manage_incidents: true,
+                                    manage_maintenance: true,
+                                    view_analytics: true,
+                                },
+                                usersCount: members.data.filter((m: User) => m.role === 'admin').length,
+                            },
+                            {
+                                role: 'member',
+                                permissions: rolePermissions.member || {
+                                    manage_organization: false,
+                                    manage_users: false,
+                                    manage_teams: false,
+                                    manage_services: false,
+                                    manage_incidents: true,
+                                    manage_maintenance: false,
+                                    view_analytics: false,
+                                },
+                                usersCount: members.data.filter((m: User) => m.role === 'member').length,
+                            },
+                        ]}
+                        onUpdatePermissions={async (role, permissions) => {
+                            try {
+                                await router.patch(route('organization.permissions'), {
+                                    role,
+                                    permissions,
+                                }, {
+                                    preserveScroll: true,
+                                });
+                                toast.success('Role permissions updated successfully!');
+                            } catch (error) {
+                                toast.error('Failed to update role permissions. Please try again.');
+                                throw error;
+                            }
+                        }}
+                        />
+                    )}
 
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Shield className="h-4 w-4 text-blue-500" />
-                                        <span className="font-medium">Member</span>
-                                    </div>
-                                    <ul className="text-sm text-muted-foreground space-y-1 ml-6">
-                                        <li>• Can view and create incidents</li>
-                                        <li>• Can update service status</li>
-                                        <li>• Can create maintenance schedules</li>
-                                        <li>• Limited access to settings</li>
-                                    </ul>
-                                </div>
+                    {/* Remove Member Dialog */}
+                    <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Remove Team Member</DialogTitle>
+                                <DialogDescription>
+                                    Are you sure you want to remove {memberToRemove?.name} from the organization? 
+                                    This action cannot be undone.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex justify-end space-x-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setRemoveDialogOpen(false)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={confirmRemoveMember}
+                                >
+                                    Remove Member
+                                </Button>
                             </div>
-                        </CardContent>
-                    </Card>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </SettingsLayout>
         </AppLayout>

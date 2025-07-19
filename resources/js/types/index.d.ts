@@ -13,16 +13,17 @@ export interface Auth {
         created_at: string;
         updated_at: string;
     };
-    currentRole?: 'owner' | 'admin' | 'team_lead' | 'member';
-    currentPermissions?: {
-        manage_organization?: boolean;
-        manage_users?: boolean;
-        manage_teams?: boolean;
-        manage_services?: boolean;
-        manage_incidents?: boolean;
-        manage_maintenance?: boolean;
-        view_analytics?: boolean;
-    };
+      currentRole?: 'system_admin' | 'owner' | 'admin' | 'team_lead' | 'member';
+  currentPermissions?: {
+    manage_organization?: boolean;
+    manage_users?: boolean;
+    manage_teams?: boolean;
+    manage_services?: boolean;
+    manage_incidents?: boolean;
+    manage_maintenance?: boolean;
+    view_analytics?: boolean;
+    system_admin?: boolean;
+  };
 }
 
 export interface BreadcrumbItem {
@@ -65,6 +66,6 @@ export interface User {
     email: string;
     email_verified_at?: string;
     avatar?: string;
-    organization_id?: number; // Legacy field
-    role?: string; // Legacy field
+    created_at: string;
+    updated_at: string;
 }

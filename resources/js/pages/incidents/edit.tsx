@@ -7,6 +7,7 @@ import { Service } from '@/types/service';
 import { usePage } from '@inertiajs/react';
 import { type SharedData } from '@/types';
 import { X, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type IncidentStatus = 'investigating' | 'identified' | 'monitoring' | 'resolved';
 type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
@@ -38,9 +39,11 @@ export default function IncidentEdit({ incident, services }: PageProps<Props>) {
   const { props } = usePage<SharedData>();
   const user = props.auth?.user;
   const organization = props.auth?.currentOrganization;
+  const currentRole = props.auth?.currentRole;
+  const toast = useToast();
   
   // Check if user can change services (admin/owner only)
-  const canChangeServices = user && ['owner', 'admin'].includes(user.role || '');
+  const canChangeServices = currentRole && ['owner', 'admin'].includes(currentRole);
   
   const [selectedServices, setSelectedServices] = useState<Set<string>>(
     new Set(incident.data.services?.map(s => s.id.toString()) || [])
@@ -77,7 +80,14 @@ export default function IncidentEdit({ incident, services }: PageProps<Props>) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    put(`/incidents/${incident.data.id}`);
+    put(`/incidents/${incident.data.id}`, {
+      onSuccess: () => {
+        toast.success('Incident updated successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to update incident. Please try again.');
+      },
+    });
   }
 
   const breadcrumbs = [

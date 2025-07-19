@@ -15,7 +15,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     const { auth } = usePage().props as any;
     const currentPath = window.location.pathname;
-    const isAdmin = auth?.user?.role === 'admin';
+    const isAdmin = auth?.user?.role === 'admin' || auth?.currentRole === 'system_admin';
 
     const sidebarNavItems: NavItem[] = [
         {

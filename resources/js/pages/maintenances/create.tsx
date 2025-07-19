@@ -3,6 +3,7 @@ import { Button, Card, Input, Label, Select, SelectContent, SelectItem, SelectTr
 import AppLayout from '@/layouts/app-layout';
 import React from 'react';
 import { Service } from '@/types/service';
+import { useToast } from '@/hooks/use-toast';
 
 const statusOptions = [
   { value: 'scheduled', label: 'Scheduled' },
@@ -17,8 +18,10 @@ interface Props {
 }
 
 export default function MaintenanceCreate({ services }: PageProps<Props>) {
+  const toast = useToast();
+  
   const { data, setData, post, processing, errors } = useForm({
-    service_id: '',
+    service_id: 'none',
     title: '',
     description: '',
     scheduled_start: '',
@@ -28,7 +31,14 @@ export default function MaintenanceCreate({ services }: PageProps<Props>) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    post('/maintenances');
+    post('/maintenances', {
+      onSuccess: () => {
+        toast.success('Maintenance scheduled successfully!');
+      },
+      onError: () => {
+        toast.error('Failed to schedule maintenance. Please try again.');
+      },
+    });
   }
 
   const breadcrumbs = [
@@ -57,7 +67,7 @@ export default function MaintenanceCreate({ services }: PageProps<Props>) {
                     <SelectValue placeholder="Select a service (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific service</SelectItem>
+                    <SelectItem value="none">No specific service</SelectItem>
                     {services.data.map((service) => (
                       <SelectItem key={service.id} value={service.id.toString()}>
                         {service.name}

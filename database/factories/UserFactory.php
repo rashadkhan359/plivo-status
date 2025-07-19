@@ -73,4 +73,15 @@ class UserFactory extends Factory
             'role' => 'member',
         ]);
     }
+
+    /**
+     * Create user as system admin
+     */
+    public function systemAdmin()
+    {
+        return $this->state(fn () => [
+            'is_system_admin' => true,
+            'role' => 'admin', // Legacy role for backward compatibility
+        ]);
+    }
 }

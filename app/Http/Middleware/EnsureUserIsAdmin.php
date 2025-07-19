@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\App;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserIsAdmin
@@ -36,8 +35,18 @@ class EnsureUserIsAdmin
      */
     protected function hasAdminAccess($user, Request $request): bool
     {
+        // System admins have access to everything
+        if ($user->isSystemAdmin()) {
+            return true;
+        }
+        
         // Check new organization-based roles
-        $organization = App::get('current_organization');
+        $organization = null;
+        try {
+            $organization = app('current_organization');
+        } catch (\Exception $e) {
+            // Organization not set in container, which is fine for system admins
+        }
         
         if ($organization) {
             $userOrganization = $user->organizations()

@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Calendar, Clock, Edit, Plus, Trash2 } from 'lucide-react';
 import React from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Maintenance {
     id: number;
@@ -17,6 +18,11 @@ interface Maintenance {
 interface Props {
     maintenances: {
         data: Maintenance[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        links: Array<{ url: string | null; label: string; active: boolean }>;
     };
 }
 
@@ -27,6 +33,8 @@ const statusColors = {
 };
 
 export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
+    const toast = useToast();
+    
     const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
     const [maintenanceToDelete, setMaintenanceToDelete] = React.useState<Maintenance | null>(null);
     const [deleting, setDeleting] = React.useState(false);
@@ -40,6 +48,12 @@ export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
         if (!maintenanceToDelete) return;
         setDeleting(true);
         router.delete(`/maintenances/${maintenanceToDelete.id}`, {
+            onSuccess: () => {
+                toast.success('Maintenance deleted successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to delete maintenance. Please try again.');
+            },
             onFinish: () => {
                 setDeleting(false);
                 setDeleteDialogOpen(false);
@@ -134,6 +148,34 @@ export default function MaintenanceIndex({ maintenances }: PageProps<Props>) {
                                     </div>
                                 </Card>
                             ))}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {maintenances.data.length > 0 && maintenances.last_page > 1 && (
+                        <div className="flex items-center justify-between mt-6">
+                            <div className="text-sm text-muted-foreground">
+                                Showing {((maintenances.current_page - 1) * maintenances.per_page) + 1} to{' '}
+                                {Math.min(maintenances.current_page * maintenances.per_page, maintenances.total)} of{' '}
+                                {maintenances.total} results
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                {maintenances.links.map((link, index) => (
+                                    <Button
+                                        key={index}
+                                        variant={link.active ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => {
+                                            if (link.url) {
+                                                router.get(link.url);
+                                            }
+                                        }}
+                                        disabled={!link.url}
+                                    >
+                                        {link.label.replace('&laquo;', '«').replace('&raquo;', '»')}
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     )}
 
