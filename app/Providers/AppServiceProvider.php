@@ -39,6 +39,10 @@ class AppServiceProvider extends ServiceProvider
         // Fix for MySQL 5.7+ and MariaDB 10.2+
         Schema::defaultStringLength(191);
 
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Register policies
         Gate::policy(Service::class, ServicePolicy::class);
         Gate::policy(Incident::class, IncidentPolicy::class);
