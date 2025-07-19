@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('organization_id')->constrained('organizations')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->enum('role', ['owner', 'admin', 'member', 'team_lead'])->default('member');
+            $table->enum('role', ['owner', 'admin', 'member', 'team_lead', 'system_admin'])->default('member');
             $table->json('permissions')->nullable(); // Granular permissions
             $table->boolean('is_active')->default(true); // Whether the user is active in this organization
             $table->foreignId('invited_by')->nullable()->constrained('users')->nullOnDelete();
