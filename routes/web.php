@@ -39,11 +39,6 @@ Route::get('/health-check', function () {
 
 // Temporary debug route - REMOVE AFTER DEBUGGING
 Route::get('/debug-env', function () {
-    if (app()->environment('production')) {
-        return response()->json([
-            'error' => 'Debug route disabled in production'
-        ]);
-    }
     
     return response()->json([
         'app_url' => config('app.url'),

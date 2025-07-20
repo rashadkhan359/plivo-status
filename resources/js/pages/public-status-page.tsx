@@ -55,10 +55,6 @@ export default function PublicStatusPage({
     const [timeline, setTimeline] = useState<IncidentUpdate[]>(updates.data);
     const { state, subscribe, unsubscribe } = useRealtime();
 
-    // Debug the updates prop
-    console.log('PublicStatusPage: updates prop:', updates);
-    console.log('PublicStatusPage: timeline state:', timeline);
-
   // Debug realtime connection
   useEffect(() => {
     console.log('Realtime state:', state);
