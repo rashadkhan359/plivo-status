@@ -36,17 +36,17 @@ services:
       - key: QUEUE_CONNECTION
         value: sync
       - key: BROADCAST_DRIVER
-        value: pusher
+        value: log
       - key: FILESYSTEM_DISK
         value: local
       - key: MAIL_MAILER
         value: log
       - key: PUSHER_APP_ID
-        sync: false
+        value: default-app-id
       - key: PUSHER_APP_KEY
-        sync: false
+        value: default-app-key
       - key: PUSHER_APP_SECRET
-        sync: false
+        value: default-app-secret
       - key: PUSHER_HOST
         value: api-mt1.pusherapp.com
       - key: PUSHER_PORT
@@ -54,11 +54,11 @@ services:
       - key: PUSHER_SCHEME
         value: https
       - key: PUSHER_APP_CLUSTER
-        sync: false
+        value: mt1
       - key: VITE_PUSHER_APP_KEY
-        sync: false
+        value: default-app-key
       - key: VITE_PUSHER_APP_CLUSTER
-        sync: false
+        value: mt1
 
 disks:
   - name: plivo-status-data

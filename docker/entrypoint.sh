@@ -30,11 +30,15 @@ if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     php artisan key:generate --no-interaction --force
 fi
 
+# Run composer post-autoload-dump with runtime environment
+log "Running composer post-autoload-dump..."
+composer run-script post-autoload-dump --no-interaction
+
 # Run database migrations
 log "Running database migrations..."
 php artisan migrate --force
 
-# Check if demo organization exists, if not run demo seeder
+# Ensure demo data is available
 log "Ensuring demo data is available..."
 php artisan demo:ensure
 
