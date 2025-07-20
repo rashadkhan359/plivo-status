@@ -45,9 +45,13 @@ class TeamController extends Controller
         $this->authorize('create', Team::class);
         
         $user = Auth::user();
+        $organization = $this->getCurrentOrganization();
+        
+        // Get available services for the organization
+        $availableServices = $organization ? $organization->services()->get() : collect();
         
         return Inertia::render('teams/create', [
-            'organizations' => null, // No need to show all organizations
+            'availableServices' => $availableServices,
         ]);
     }
 
@@ -70,12 +74,21 @@ class TeamController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
         ]);
         
         $team = $organization->teams()->create([
-            ...$validated,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'color' => $validated['color'],
             'created_by' => $user->id,
         ]);
+        
+        // Attach services if provided
+        if (!empty($validated['service_ids'])) {
+            $team->services()->attach($validated['service_ids']);
+        }
         
         return redirect()->route('teams.index')->with('success', 'Team created successfully.');
     }
@@ -94,6 +107,9 @@ class TeamController extends Controller
         // Get all users in the organization for member management
         $availableUsers = $organization ? $organization->users()->get() : collect();
         
+        // Get available services for service management
+        $availableServices = $organization ? $organization->services()->get() : collect();
+        
         // Get team role permissions
         $permissionService = app(PermissionService::class);
         $teamRolePermissions = $permissionService->getTeamRolePermissions($team);
@@ -101,7 +117,9 @@ class TeamController extends Controller
         return Inertia::render('teams/show', [
             'team' => $team,
             'canManageMembers' => $user->can('manageMembers', $team),
+            'canManageServices' => $user->can('manageServices', $team),
             'availableUsers' => $availableUsers,
+            'availableServices' => $availableServices,
             'teamRolePermissions' => $teamRolePermissions,
         ]);
     }
@@ -113,8 +131,15 @@ class TeamController extends Controller
     {
         $this->authorize('update', $team);
         
+        $organization = $this->getCurrentOrganization();
+        $team->load('services');
+        
+        // Get available services for the organization
+        $availableServices = $organization ? $organization->services()->get() : collect();
+        
         return Inertia::render('teams/edit', [
             'team' => $team,
+            'availableServices' => $availableServices,
         ]);
     }
 
@@ -129,9 +154,19 @@ class TeamController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
         ]);
         
-        $team->update($validated);
+        $team->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'color' => $validated['color'],
+        ]);
+        
+        // Sync services
+        $serviceIds = $validated['service_ids'] ?? [];
+        $team->services()->sync($serviceIds);
         
         return redirect()->route('teams.index')->with('success', 'Team updated successfully.');
     }
@@ -247,6 +282,24 @@ class TeamController extends Controller
         $permissionService->assignDefaultTeamPermissions($user, $team, $validated['role']);
         
         return redirect()->back()->with('success', 'Member role updated.');
+    }
+
+    /**
+     * Update team services.
+     */
+    public function updateServices(Request $request, Team $team)
+    {
+        $this->authorize('manageServices', $team);
+        
+        $validated = $request->validate([
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
+        ]);
+        
+        $serviceIds = $validated['service_ids'] ?? [];
+        $team->services()->sync($serviceIds);
+        
+        return redirect()->back()->with('success', 'Team services updated successfully.');
     }
 
     /**

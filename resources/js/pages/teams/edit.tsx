@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle, Users } from 'lucide-react';
+import { LoaderCircle, Users, Settings } from 'lucide-react';
 import { FormEventHandler } from 'react';
 
 import InputError from '@/components/input-error';
@@ -8,27 +8,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ServiceSelector } from '@/components/service-selector';
 import AppLayout from '@/layouts/app-layout';
-import { Team } from '@/types';
+import { Team, Service } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface TeamEditProps {
-    team: Team;
+    team: Team & {
+        services: Service[];
+    };
+    availableServices: Service[];
 }
 
 type TeamForm = {
     name: string;
     description: string | null;
     color: string | null;
+    service_ids: number[];
 };
 
-export default function TeamEdit({ team }: TeamEditProps) {
+export default function TeamEdit({ team, availableServices }: TeamEditProps) {
     const toast = useToast();
     
     const { data, setData, put, processing, errors, reset } = useForm<TeamForm>({
         name: team.name,
         description: team.description || '',
         color: team.color || '',
+        service_ids: team.services.map(service => service.id),
     });
 
     const submit: FormEventHandler = (e) => {
@@ -44,11 +50,19 @@ export default function TeamEdit({ team }: TeamEditProps) {
         });
     };
 
+    const handleServiceSelectionChange = (services: Service[]) => {
+        setData('service_ids', services.map(service => service.id));
+    };
+
+    const selectedServices = availableServices.filter(service => 
+        data.service_ids.includes(service.id)
+    );
+
     return (
         <AppLayout>
             <Head title={`Edit Team - ${team.name}`} />
             
-            <div className="space-y-6">
+            <div className="space-y-6 p-6">
                 <div>
                     <h1 className="text-2xl font-bold">Edit Team</h1>
                     <p className="text-muted-foreground">
@@ -135,6 +149,35 @@ export default function TeamEdit({ team }: TeamEditProps) {
                                 </Button>
                             </div>
                         </form>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Settings className="h-5 w-5" />
+                            Team Services
+                        </CardTitle>
+                        <CardDescription>
+                            Manage which services this team is responsible for.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Services to Manage</Label>
+                                <ServiceSelector
+                                    services={availableServices}
+                                    selectedServices={selectedServices}
+                                    onSelectionChange={handleServiceSelectionChange}
+                                    placeholder="Select services this team will manage..."
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    Select services that this team will be responsible for managing.
+                                </p>
+                                <InputError message={errors.service_ids} />
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
