@@ -44,34 +44,45 @@ RUN npm ci
 # Copy application files
 COPY . .
 
+# Create directories for persistent data
+RUN mkdir -p /var/www/html/storage/app/public \
+    /var/www/html/storage/framework/cache \
+    /var/www/html/storage/framework/sessions \
+    /var/www/html/storage/framework/views \
+    /var/www/html/storage/logs \
+    /var/www/html/bootstrap/cache \
+    /var/www/html/database
+
+# Create SQLite database file if it doesn't exist
+RUN touch /var/www/html/database/database.sqlite
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 775 /var/www/html/storage && \
+    chmod -R 775 /var/www/html/bootstrap/cache && \
+    chmod 664 /var/www/html/database/database.sqlite
+
 # Copy Nginx config
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
 
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Make entrypoint executable
-RUN chmod +x /var/www/html/docker/entrypoint.sh
+# Copy entrypoint
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Create SQLite database directory
-RUN mkdir -p /var/www/html/database && \
-    chmod -R 775 /var/www/html/database
-
-# Build assets (VITE_ environment variables will be available at runtime)
+# Build frontend assets
 RUN npm run build
 
-# Clean up node_modules to reduce image size
-RUN rm -rf node_modules
+# Run composer scripts after copying all files
+RUN composer run-script post-autoload-dump
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Expose port 80
+# Expose port
 EXPOSE 80
 
 # Set entrypoint
-ENTRYPOINT ["/var/www/html/docker/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-# Start supervisor
+# Default command
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

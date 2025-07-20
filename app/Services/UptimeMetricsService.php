@@ -6,6 +6,7 @@ use App\Models\Service;
 use App\Models\ServiceStatusLog;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class UptimeMetricsService
 {
@@ -38,48 +39,117 @@ class UptimeMetricsService
      */
     public function calculateUptimeForPeriod(Service $service, Carbon $startDate, Carbon $endDate): float
     {
+        // Make sure we work with copies and don't normalize dates
+        $startDate = $startDate->copy();
+        $endDate = $endDate->copy();
+        
+        // Ensure start date is before end date
+        if ($startDate->gte($endDate)) {
+            return 0.0;
+        }
+
+        // Calculate total period minutes correctly
+        $totalPeriodMinutes = $startDate->diffInMinutes($endDate, false);
+        
+        // Ensure total period is positive
+        if ($totalPeriodMinutes <= 0) {
+            return 0.0;
+        }
+
         // Get all status changes within the period
         $statusLogs = ServiceStatusLog::forService($service->id)
             ->withinDateRange($startDate, $endDate)
             ->orderBy('changed_at')
             ->get();
 
-        // If no logs exist, assume the service was operational for the entire period
-        if ($statusLogs->isEmpty()) {
-            return $service->status === 'operational' ? 100.0 : 0.0;
-        }
-
-        $totalDuration = $endDate->diffInMinutes($startDate);
-        $uptimeDuration = 0;
-
-        // Get the initial status at the start of the period
+        // Get the status before the period started
         $initialLog = ServiceStatusLog::forService($service->id)
-            ->where('changed_at', '<=', $startDate)
+            ->where('changed_at', '<', $startDate)
             ->orderBy('changed_at', 'desc')
             ->first();
 
-        $currentStatus = $initialLog ? $initialLog->status_to : 'operational';
-        $currentTime = $startDate;
+        // Determine the initial status
+        $currentStatus = $initialLog ? $initialLog->status_to : $service->status;
+        $currentTime = $startDate->copy();
+        $totalUptimeMinutes = 0;
 
+        // Debug logging
+        if (app()->environment('testing') || app()->runningInConsole()) {
+            Log::info('Uptime calculation debug', [
+                'service_id' => $service->id,
+                'service_name' => $service->name,
+                'start_date' => $startDate->toISOString(),
+                'end_date' => $endDate->toISOString(),
+                'total_period_minutes' => $totalPeriodMinutes,
+                'initial_status' => $currentStatus,
+                'status_logs_count' => $statusLogs->count(),
+                'current_time' => $currentTime->toISOString(),
+            ]);
+        }
+
+        // If no logs exist in the period, return based on current status
+        if ($statusLogs->isEmpty()) {
+            // If no logs exist at all, assume the service was operational for the entire period
+            // unless it's currently not operational
+            if (!$initialLog) {
+                return $service->status === 'operational' ? 100.0 : 0.0;
+            }
+            // If there are logs before the period, use the last known status
+            return $currentStatus === 'operational' ? 100.0 : 0.0;
+        }
+
+        // Calculate uptime for each period between status changes
         foreach ($statusLogs as $log) {
             $logTime = Carbon::parse($log->changed_at);
             
-            // Add uptime duration if current status is operational
+            // Add uptime for the period before this status change
             if ($currentStatus === 'operational') {
-                $uptimeDuration += $currentTime->diffInMinutes($logTime);
+                $periodMinutes = $currentTime->diffInMinutes($logTime);
+                $totalUptimeMinutes += $periodMinutes;
+                
+                if (app()->environment('testing') || app()->runningInConsole()) {
+                    Log::info('Added uptime period', [
+                        'from' => $currentTime->toISOString(),
+                        'to' => $logTime->toISOString(),
+                        'minutes' => $periodMinutes,
+                        'total_uptime_minutes' => $totalUptimeMinutes,
+                        'current_status' => $currentStatus,
+                    ]);
+                }
             }
             
-            // Update current status and time
             $currentStatus = $log->status_to;
             $currentTime = $logTime;
         }
 
-        // Handle the final period from last log to end date
+        // Add uptime for the final period (from last log to end date)
         if ($currentStatus === 'operational') {
-            $uptimeDuration += $currentTime->diffInMinutes($endDate);
+            $finalPeriodMinutes = $currentTime->diffInMinutes($endDate);
+            $totalUptimeMinutes += $finalPeriodMinutes;
+            
+            if (app()->environment('testing') || app()->runningInConsole()) {
+                Log::info('Added final uptime period', [
+                    'from' => $currentTime->toISOString(),
+                    'to' => $endDate->toISOString(),
+                    'minutes' => $finalPeriodMinutes,
+                    'total_uptime_minutes' => $totalUptimeMinutes,
+                    'current_status' => $currentStatus,
+                ]);
+            }
         }
 
-        return $totalDuration > 0 ? ($uptimeDuration / $totalDuration) * 100 : 0.0;
+        // Calculate percentage
+        $result = ($totalUptimeMinutes / $totalPeriodMinutes) * 100;
+        
+        if (app()->environment('testing') || app()->runningInConsole()) {
+            Log::info('Final calculation', [
+                'total_uptime_minutes' => $totalUptimeMinutes,
+                'total_period_minutes' => $totalPeriodMinutes,
+                'result' => $result,
+            ]);
+        }
+        
+        return round($result, 2);
     }
 
     /**
@@ -90,23 +160,31 @@ class UptimeMetricsService
         $startDate = $this->getStartDateForPeriod($period);
         $endDate = now();
         
+        // Ensure start date is before end date
+        if ($startDate->gte($endDate)) {
+            return [];
+        }
+        
         $dataPoints = [];
         $interval = $this->getIntervalForPeriod($period);
         $current = $startDate->copy();
 
-        while ($current->lte($endDate)) {
+        while ($current->lt($endDate)) {
             $periodEnd = $current->copy()->add($interval);
             if ($periodEnd->gt($endDate)) {
                 $periodEnd = $endDate;
             }
 
-            $uptime = $this->calculateUptimeForPeriod($service, $current, $periodEnd);
-            
-            $dataPoints[] = [
-                'timestamp' => $current->toISOString(),
-                'uptime' => round($uptime, 2),
-                'label' => $current->format($this->getDateFormatForPeriod($period)),
-            ];
+            // Only calculate if the period is valid (start < end)
+            if ($current->lt($periodEnd)) {
+                $uptime = $this->calculateUptimeForPeriod($service, $current, $periodEnd);
+                
+                $dataPoints[] = [
+                    'timestamp' => $current->toISOString(),
+                    'uptime' => round($uptime, 2),
+                    'label' => $current->format($this->getDateFormatForPeriod($period)),
+                ];
+            }
 
             $current->add($interval);
         }

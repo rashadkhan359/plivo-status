@@ -167,7 +167,6 @@ class IncidentController extends Controller
         $this->authorize('update', $incident);
         
         $organization = $this->getCurrentOrganization();
-        $user = Auth::user();
         
         $validated = $request->validate([
             'service_ids' => 'required|array|min:1',
@@ -181,11 +180,11 @@ class IncidentController extends Controller
         // Validate services belong to organization
         $this->validateServicesBelongToOrganization($validated['service_ids']);
         
-        // Check if user has permission to change services
-        $canChangeServices = in_array($user->role, ['owner', 'admin']);
-        
+        // Capture original attributes before changes for service status logic
+        $originalAttributes = $incident->getAttributes();
         $wasResolved = $incident->status === IncidentStatus::RESOLVED;
         
+        // Update incident
         $incident->update([
             'title' => $validated['title'],
             'description' => $validated['description'],
@@ -193,28 +192,27 @@ class IncidentController extends Controller
             'severity' => $validated['severity'],
         ]);
         
-        // Only update service relationships if user has permission
-        if ($canChangeServices) {
+        // Update services relationship if it changed
+        $currentServiceIds = $incident->services()->pluck('services.id')->toArray();
+        if (array_diff($validated['service_ids'], $currentServiceIds) || 
+            array_diff($currentServiceIds, $validated['service_ids'])) {
             $incident->services()->sync($validated['service_ids']);
-            // Update primary service_id for backward compatibility
+            // Update legacy service_id field to first service
             $incident->update(['service_id' => $validated['service_ids'][0]]);
         }
         
-        // Check if incident was resolved
-        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED) {
+        // Handle resolution timestamp
+        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED->value) {
             $incident->update(['resolved_by' => Auth::id(), 'resolved_at' => now()]);
             event(new IncidentResolved($incident));
         } else {
             event(new IncidentUpdated($incident));
         }
         
-        // Update service statuses based on incident changes
+        // Update service statuses using comprehensive change handler
         $statusService = app(\App\Services\ServiceStatusService::class);
-        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED) {
-            $statusService->handleIncidentResolved($incident);
-        } else {
-            $statusService->handleIncidentUpdated($incident);
-        }
+        $incident->load('services'); // Ensure services are loaded
+        $statusService->handleIncidentChanges($incident, $originalAttributes);
         
         return redirect()->route('incidents.index')->with('success', 'Incident updated successfully.');
     }

@@ -1,23 +1,69 @@
-node_modules
-npm-debug.log
+# Git
 .git
 .gitignore
-README.md
-.env
-.env.example
-.env.local
-.env.testing
-.phpunit.result.cache
-docker-compose.yml
-docker-compose.override.yml
-Dockerfile
+.gitattributes
+
+# Docker
 .dockerignore
-.cursor
-.cursorignore
-.github
-docs
-tests
-storage/logs/*
+Dockerfile*
+docker-compose*
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs
+
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PHP
+vendor/
+
+# Laravel specific
+storage/app/*
 storage/framework/cache/*
 storage/framework/sessions/*
-storage/framework/views/* 
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*
+.env*
+!.env.example
+
+# Development files
+.phpunit.result.cache
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Tests
+tests/
+
+# Documentation
+*.md
+!README.md
+
+# Build artifacts
+public/hot
+public/storage
+public/build
+
+# Package files
+*.tar.gz
+*.zip 

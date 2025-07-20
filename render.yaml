@@ -6,13 +6,23 @@ services:
     dockerfilePath: ./Dockerfile
     dockerCommand: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
     healthCheckPath: /health
+    disk:
+      name: plivo-status-data
+      mountPath: /var/www/html/database
+      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
         value: false
+      - key: APP_NAME
+        value: "Plivo Status"
+      - key: APP_URL
+        value: https://plivo-status.onrender.com
       - key: LOG_CHANNEL
         value: stack
+      - key: LOG_LEVEL
+        value: error
       - key: DB_CONNECTION
         value: sqlite
       - key: DB_DATABASE
@@ -21,10 +31,16 @@ services:
         value: file
       - key: SESSION_DRIVER
         value: file
+      - key: SESSION_LIFETIME
+        value: 120
       - key: QUEUE_CONNECTION
         value: sync
       - key: BROADCAST_DRIVER
         value: pusher
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: MAIL_MAILER
+        value: log
       - key: PUSHER_APP_ID
         sync: false
       - key: PUSHER_APP_KEY
@@ -42,4 +58,8 @@ services:
       - key: VITE_PUSHER_APP_KEY
         sync: false
       - key: VITE_PUSHER_APP_CLUSTER
-        sync: false 
+        sync: false
+
+disks:
+  - name: plivo-status-data
+    sizeGB: 1 

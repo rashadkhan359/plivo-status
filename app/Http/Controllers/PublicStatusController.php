@@ -49,22 +49,22 @@ class PublicStatusController extends Controller
             ->take(15)
             ->get();
 
-        // Get basic uptime metrics for public display (90-day average)
+        // Get basic uptime metrics for public display (30-day average for consistency)
         $uptimeService = app(UptimeMetricsService::class);
         $publicUptimeMetrics = [];
         $chartData = [];
         
         foreach ($services as $service) {
-            // Get uptime percentage
-            $uptime = $uptimeService->calculateUptimeForPeriod($service, now()->subDays(90), now());
+            // Get uptime percentage for 30 days (consistent with dashboard)
+            $uptime = $uptimeService->calculateUptimeForPeriod($service, now()->subDays(30), now());
             $publicUptimeMetrics[] = [
                 'service_id' => $service->id,
                 'service_name' => $service->name,
                 'uptime_percentage' => round($uptime, 1),
-                'period' => '90d',
+                'period' => '30d',
             ];
             
-            // Get 30-day chart data for visualization
+            // Get 30-day chart data for visualization (daily data points)
             $serviceChartData = $uptimeService->getUptimeChartData($service, '30d');
             $chartData[$service->id] = array_map(function($point) {
                 return [

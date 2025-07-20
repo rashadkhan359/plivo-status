@@ -94,4 +94,35 @@ class IncidentUpdate extends Model
     {
         return $this->created_at->diffForHumans();
     }
+
+    /**
+     * Check if this update changes the incident status
+     */
+    public function changesIncidentStatus(): bool
+    {
+        $incident = $this->incident;
+        return $incident && $incident->status !== $this->status;
+    }
+
+    /**
+     * Apply this update's status to the parent incident
+     */
+    public function applyToIncident(): void
+    {
+        $incident = $this->incident;
+        if ($incident && $this->changesIncidentStatus()) {
+            $originalStatus = $incident->status;
+            
+            // Update incident status
+            $incident->update(['status' => $this->status]);
+            
+            // If resolved, update resolution fields
+            if ($this->status === 'resolved' && $originalStatus !== 'resolved') {
+                $incident->update([
+                    'resolved_by' => $this->created_by,
+                    'resolved_at' => $this->created_at,
+                ]);
+            }
+        }
+    }
 } 

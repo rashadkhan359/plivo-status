@@ -51,6 +51,10 @@ class IncidentUpdateController extends Controller
             'status' => ['required', new Enum(IncidentStatus::class)],
         ]);
         
+        // Capture original incident status before changes
+        $originalStatus = $incident->status;
+        $wasResolved = $originalStatus === IncidentStatus::RESOLVED->value;
+        
         $update = $incident->updates()->create([
             'description' => $validated['message'],
             'status' => $validated['status'],
@@ -59,6 +63,33 @@ class IncidentUpdateController extends Controller
         
         // Update the incident status as well
         $incident->update(['status' => $validated['status']]);
+        
+        // Refresh the incident to ensure we have the latest state
+        $incident->refresh();
+        
+        // Handle service status changes based on the status change
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        $incident->load('services'); // Ensure services are loaded
+        
+        // Check if status actually changed and handle accordingly
+        if ($originalStatus !== $validated['status']) {
+            if ($validated['status'] === IncidentStatus::RESOLVED->value) {
+                // Handle incident resolution
+                if (!$wasResolved) {
+                    $incident->update(['resolved_by' => Auth::id(), 'resolved_at' => now()]);
+                }
+                $statusService->handleIncidentResolved($incident);
+            } else {
+                // Handle general incident status change
+                $changes = [
+                    'status' => [
+                        'old' => $originalStatus,
+                        'new' => $validated['status']
+                    ]
+                ];
+                $statusService->handleIncidentUpdated($incident, $changes);
+            }
+        }
         
         event(new IncidentUpdateCreated($update));
         event(new IncidentUpdated($incident->fresh()));

@@ -71,11 +71,18 @@ class TeamController extends Controller
         }
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:teams,name,NULL,id,organization_id,' . $organization->id,
+            ],
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
             'service_ids' => 'nullable|array',
             'service_ids.*' => 'exists:services,id',
+        ], [
+            'name.unique' => 'A team with this name already exists in your organization.',
         ]);
         
         $team = $organization->teams()->create([
@@ -85,9 +92,11 @@ class TeamController extends Controller
             'created_by' => $user->id,
         ]);
         
-        // Attach services if provided
+        // Assign services to this team if provided
         if (!empty($validated['service_ids'])) {
-            $team->services()->attach($validated['service_ids']);
+            $organization->services()
+                ->whereIn('id', $validated['service_ids'])
+                ->update(['team_id' => $team->id]);
         }
         
         return redirect()->route('teams.index')->with('success', 'Team created successfully.');
@@ -151,11 +160,18 @@ class TeamController extends Controller
         $this->authorize('update', $team);
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:teams,name,' . $team->id . ',id,organization_id,' . $team->organization_id,
+            ],
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
             'service_ids' => 'nullable|array',
             'service_ids.*' => 'exists:services,id',
+        ], [
+            'name.unique' => 'A team with this name already exists in your organization.',
         ]);
         
         $team->update([
@@ -164,9 +180,20 @@ class TeamController extends Controller
             'color' => $validated['color'],
         ]);
         
-        // Sync services
+        // Update service assignments
         $serviceIds = $validated['service_ids'] ?? [];
-        $team->services()->sync($serviceIds);
+        
+        // First, remove all services from this team
+        $team->organization->services()
+            ->where('team_id', $team->id)
+            ->update(['team_id' => null]);
+        
+        // Then assign the selected services to this team
+        if (!empty($serviceIds)) {
+            $team->organization->services()
+                ->whereIn('id', $serviceIds)
+                ->update(['team_id' => $team->id]);
+        }
         
         return redirect()->route('teams.index')->with('success', 'Team updated successfully.');
     }
@@ -297,7 +324,18 @@ class TeamController extends Controller
         ]);
         
         $serviceIds = $validated['service_ids'] ?? [];
-        $team->services()->sync($serviceIds);
+        
+        // First, remove all services from this team
+        $team->organization->services()
+            ->where('team_id', $team->id)
+            ->update(['team_id' => null]);
+        
+        // Then assign the selected services to this team
+        if (!empty($serviceIds)) {
+            $team->organization->services()
+                ->whereIn('id', $serviceIds)
+                ->update(['team_id' => $team->id]);
+        }
         
         return redirect()->back()->with('success', 'Team services updated successfully.');
     }

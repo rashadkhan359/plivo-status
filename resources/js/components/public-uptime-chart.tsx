@@ -79,7 +79,7 @@ export function PublicUptimeChart({ services, chartData }: PublicUptimeChartProp
                 <CardHeader>
                     <CardTitle>Service Uptime Overview</CardTitle>
                     <CardDescription>
-                        Service availability over the last 90 days
+                        Service availability over the last 30 days
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -127,7 +127,7 @@ export function PublicUptimeChart({ services, chartData }: PublicUptimeChartProp
                                     <div key={service.service_id} className="flex items-center justify-between p-3 rounded-lg border bg-gray-50 dark:bg-accent dark:border-accent">
                                         <div>
                                             <h4 className="font-medium text-gray-900 dark:text-gray-100">{service.service_name}</h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">Last 90 days</p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">Last 30 days</p>
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <Badge className={`${status.color} border`}>
@@ -218,7 +218,7 @@ export function PublicUptimeChart({ services, chartData }: PublicUptimeChartProp
                             </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
-                            Uptime is calculated based on service operational status. Charts show the last 30 days, summary shows 90 days.
+                            Uptime is calculated based on service operational status. Charts show the last 30 days.
                         </p>
                     </div>
                 </CardContent>
