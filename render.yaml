@@ -34,31 +34,23 @@ services:
       - key: SESSION_LIFETIME
         value: 120
       - key: QUEUE_CONNECTION
-        value: sync
-      - key: BROADCAST_DRIVER
-        value: log
+        value: database
+      - key: BROADCAST_CONNECTION
+        value: pusher
       - key: FILESYSTEM_DISK
         value: local
       - key: MAIL_MAILER
-        value: log
-      - key: PUSHER_APP_ID
-        value: default-app-id
-      - key: PUSHER_APP_KEY
-        value: default-app-key
-      - key: PUSHER_APP_SECRET
-        value: default-app-secret
-      - key: PUSHER_HOST
-        value: api-mt1.pusherapp.com
-      - key: PUSHER_PORT
-        value: 443
-      - key: PUSHER_SCHEME
-        value: https
-      - key: PUSHER_APP_CLUSTER
-        value: mt1
-      - key: VITE_PUSHER_APP_KEY
-        value: default-app-key
-      - key: VITE_PUSHER_APP_CLUSTER
-        value: mt1
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_ENCRYPTION
+        value: tls
+      # Note: Set these environment variables in Render dashboard:
+      # MAIL_FROM_ADDRESS, MAIL_USERNAME, MAIL_PASSWORD
+      # PUSHER_APP_ID, PUSHER_APP_KEY, PUSHER_APP_SECRET, PUSHER_APP_CLUSTER
+      # VITE_PUSHER_APP_KEY, VITE_PUSHER_APP_CLUSTER
 
 disks:
   - name: plivo-status-data
