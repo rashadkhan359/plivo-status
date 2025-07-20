@@ -37,6 +37,18 @@ Route::get('/health-check', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
+
+Route::get('/broadcasting/config', function () {
+    return response()->json([
+        'pusher' => [
+            'key' => config('broadcasting.connections.pusher.key'),
+            'cluster' => config('broadcasting.connections.pusher.options.cluster'),
+            'encrypted' => true,
+            'forceTLS' => true,
+        ]
+    ]);
+});
+
 // Temporary debug route - REMOVE AFTER DEBUGGING
 Route::get('/debug-env', function () {
     
