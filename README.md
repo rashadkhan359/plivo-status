@@ -10,7 +10,7 @@ This project was built as a technical assignment to demonstrate:
 - **Frontend Skills**: Responsive design, state management, and component structure
 - **Backend Skills**: API design, database integration, and authentication implementation
 - **Problem-Solving**: Approach and solve challenges during development
-- **AI-First Development**: Leveraging AI tools for fast-track development
+- **Modern Development**: Leveraging current best practices and tools
 
 ## ✨ Key Features
 
@@ -157,8 +157,6 @@ Comprehensive documentation is available in the `docs/` folder:
 - **[Authentication & Permissions](docs/authentication.md)** - User management and roles
 - **[Real-time Features](docs/realtime.md)** - WebSocket and broadcasting setup
 - **[API Documentation](docs/api.md)** - Available endpoints and usage
-- **[Deployment Guide](docs/deployment.md)** - Production deployment instructions
-- **[Testing Guide](docs/testing.md)** - Running tests and test coverage
 
 ## 🧪 Testing
 
@@ -270,8 +268,8 @@ This project is licensed under the MIT License.
 - **Inertia.js** for seamless SPA experience
 - **ShadcnUI** for beautiful components
 - **Tailwind CSS** for utility-first styling
-- **AI Tools** (Cursor, GitHub Copilot, Claude) for accelerated development
+- **Open Source Community** for excellent tools and libraries
 
 ---
 
-**Built with ❤️ using modern web technologies and AI-assisted development** 
+**Built with ❤️ using modern web technologies** 

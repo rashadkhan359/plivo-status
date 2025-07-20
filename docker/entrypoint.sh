@@ -14,15 +14,21 @@ php artisan key:generate --no-interaction --force
 # Run migrations
 php artisan migrate --force
 
+# Ensure system admin exists
+php artisan admin:ensure
+
+# Ensure demo data is available
+php artisan demo:ensure
+
 # Create storage symlink
 php artisan storage:link
 
-# Cache configuration
+# Cache configuration for production
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 
-# Fix storage permissions
+# Set proper permissions
 chmod -R 775 /var/www/html/storage
 chown -R www-data:www-data /var/www/html/storage
 

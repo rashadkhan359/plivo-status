@@ -45,9 +45,13 @@ class TeamController extends Controller
         $this->authorize('create', Team::class);
         
         $user = Auth::user();
+        $organization = $this->getCurrentOrganization();
+        
+        // Get available services for the organization
+        $availableServices = $organization ? $organization->services()->get() : collect();
         
         return Inertia::render('teams/create', [
-            'organizations' => null, // No need to show all organizations
+            'availableServices' => $availableServices,
         ]);
     }
 
@@ -67,15 +71,33 @@ class TeamController extends Controller
         }
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:teams,name,NULL,id,organization_id,' . $organization->id,
+            ],
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
+        ], [
+            'name.unique' => 'A team with this name already exists in your organization.',
         ]);
         
         $team = $organization->teams()->create([
-            ...$validated,
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'color' => $validated['color'],
             'created_by' => $user->id,
         ]);
+        
+        // Assign services to this team if provided
+        if (!empty($validated['service_ids'])) {
+            $organization->services()
+                ->whereIn('id', $validated['service_ids'])
+                ->update(['team_id' => $team->id]);
+        }
         
         return redirect()->route('teams.index')->with('success', 'Team created successfully.');
     }
@@ -94,6 +116,9 @@ class TeamController extends Controller
         // Get all users in the organization for member management
         $availableUsers = $organization ? $organization->users()->get() : collect();
         
+        // Get available services for service management
+        $availableServices = $organization ? $organization->services()->get() : collect();
+        
         // Get team role permissions
         $permissionService = app(PermissionService::class);
         $teamRolePermissions = $permissionService->getTeamRolePermissions($team);
@@ -101,7 +126,9 @@ class TeamController extends Controller
         return Inertia::render('teams/show', [
             'team' => $team,
             'canManageMembers' => $user->can('manageMembers', $team),
+            'canManageServices' => $user->can('manageServices', $team),
             'availableUsers' => $availableUsers,
+            'availableServices' => $availableServices,
             'teamRolePermissions' => $teamRolePermissions,
         ]);
     }
@@ -113,8 +140,15 @@ class TeamController extends Controller
     {
         $this->authorize('update', $team);
         
+        $organization = $this->getCurrentOrganization();
+        $team->load('services');
+        
+        // Get available services for the organization
+        $availableServices = $organization ? $organization->services()->get() : collect();
+        
         return Inertia::render('teams/edit', [
             'team' => $team,
+            'availableServices' => $availableServices,
         ]);
     }
 
@@ -126,12 +160,40 @@ class TeamController extends Controller
         $this->authorize('update', $team);
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:teams,name,' . $team->id . ',id,organization_id,' . $team->organization_id,
+            ],
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
+        ], [
+            'name.unique' => 'A team with this name already exists in your organization.',
         ]);
         
-        $team->update($validated);
+        $team->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'color' => $validated['color'],
+        ]);
+        
+        // Update service assignments
+        $serviceIds = $validated['service_ids'] ?? [];
+        
+        // First, remove all services from this team
+        $team->organization->services()
+            ->where('team_id', $team->id)
+            ->update(['team_id' => null]);
+        
+        // Then assign the selected services to this team
+        if (!empty($serviceIds)) {
+            $team->organization->services()
+                ->whereIn('id', $serviceIds)
+                ->update(['team_id' => $team->id]);
+        }
         
         return redirect()->route('teams.index')->with('success', 'Team updated successfully.');
     }
@@ -247,6 +309,35 @@ class TeamController extends Controller
         $permissionService->assignDefaultTeamPermissions($user, $team, $validated['role']);
         
         return redirect()->back()->with('success', 'Member role updated.');
+    }
+
+    /**
+     * Update team services.
+     */
+    public function updateServices(Request $request, Team $team)
+    {
+        $this->authorize('manageServices', $team);
+        
+        $validated = $request->validate([
+            'service_ids' => 'nullable|array',
+            'service_ids.*' => 'exists:services,id',
+        ]);
+        
+        $serviceIds = $validated['service_ids'] ?? [];
+        
+        // First, remove all services from this team
+        $team->organization->services()
+            ->where('team_id', $team->id)
+            ->update(['team_id' => null]);
+        
+        // Then assign the selected services to this team
+        if (!empty($serviceIds)) {
+            $team->organization->services()
+                ->whereIn('id', $serviceIds)
+                ->update(['team_id' => $team->id]);
+        }
+        
+        return redirect()->back()->with('success', 'Team services updated successfully.');
     }
 
     /**

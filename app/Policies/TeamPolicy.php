@@ -81,6 +81,20 @@ class TeamPolicy
     }
 
     /**
+     * Determine whether the user can manage team services.
+     */
+    public function manageServices(User $user, Team $team): bool
+    {
+        if (!$this->belongsToSameOrganization($user, $team)) {
+            return false;
+        }
+
+        // Owners, admins, and team leads can manage services
+        return $this->hasRole($user, ['owner', 'admin']) || 
+               $this->isTeamLead($user, $team);
+    }
+
+    /**
      * Determine whether the user can join the team.
      */
     public function join(User $user, Team $team): bool

@@ -61,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('teams/{team}/members/{user}', [TeamController::class, 'removeMember'])->name('teams.members.remove');
         Route::patch('teams/{team}/members/{user}/role', [TeamController::class, 'updateMemberRole'])->name('teams.members.role');
         Route::patch('teams/{team}/permissions', [TeamController::class, 'updateRolePermissions'])->name('teams.permissions');
+        Route::patch('teams/{team}/services', [TeamController::class, 'updateServices'])->name('teams.services');
         
         
         // Settings

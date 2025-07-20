@@ -90,6 +90,8 @@ class IncidentController extends Controller
         // Validate services belong to organization
         $this->validateServicesBelongToOrganization($validated['service_ids']);
         
+        // Capture original attributes before changes for service status logic
+        $originalAttributes = $incident->getAttributes();
         $wasResolved = $incident->status === IncidentStatus::RESOLVED;
         
         $incident->update([
@@ -102,13 +104,18 @@ class IncidentController extends Controller
         // Update service relationships
         $incident->services()->sync($validated['service_ids']);
         
-        // Check if incident was resolved
-        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED) {
+        // Handle resolution timestamp
+        if (!$wasResolved && $validated['status'] === IncidentStatus::RESOLVED->value) {
             $incident->update(['resolved_by' => Auth::id(), 'resolved_at' => now()]);
             event(new IncidentResolved($incident));
         } else {
             event(new IncidentUpdated($incident));
         }
+        
+        // Update service statuses using comprehensive change handler
+        $statusService = app(\App\Services\ServiceStatusService::class);
+        $incident->load('services'); // Ensure services are loaded
+        $statusService->handleIncidentChanges($incident, $originalAttributes);
         
         return new IncidentResource($incident->load('services'));
     }

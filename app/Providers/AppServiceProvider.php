@@ -19,7 +19,9 @@ use App\Policies\MaintenancePolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\IncidentUpdatePolicy;
 use App\Events\ServiceStatusChanged;
+use App\Events\ServiceCreated;
 use App\Listeners\LogServiceStatusChange;
+use App\Listeners\LogServiceCreation;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Register event listeners
         Event::listen(ServiceStatusChanged::class, LogServiceStatusChange::class);
+        Event::listen(ServiceCreated::class, LogServiceCreation::class);
 
         // Ensure system admin exists on application boot
         $this->ensureSystemAdminExists();

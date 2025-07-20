@@ -15,18 +15,29 @@ import React from 'react';
 // @ts-ignore
 window.Pusher = Pusher;
 
-// Configure Echo with Pusher
-const echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'ap2',
-    forceTLS: true,
-    enabledTransports: ['ws', 'wss'],
-    disableStats: true,
-    encrypted: true,
-    timeout: 20000,
-    enableLogging: import.meta.env.DEV,
-});
+// Configure Echo with Pusher only if credentials are available
+const pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
+const pusherCluster = import.meta.env.VITE_PUSHER_APP_CLUSTER || 'ap2';
+
+let echo: any = null;
+
+if (pusherKey) {
+    try {
+        echo = new Echo({
+            broadcaster: 'pusher',
+            key: pusherKey,
+            cluster: pusherCluster,
+            forceTLS: true,
+            enabledTransports: ['ws', 'wss'],
+            disableStats: true,
+            encrypted: true,
+            timeout: 20000,
+            enableLogging: import.meta.env.DEV,
+        });
+    } catch (error) {
+        console.warn('Failed to initialize Pusher:', error);
+    }
+}
 
 // Make Echo available globally for useRealtime hook and direct usage
 // @ts-ignore

@@ -57,7 +57,7 @@ RUN chmod +x /var/www/html/docker/entrypoint.sh
 RUN mkdir -p /var/www/html/database && \
     chmod -R 775 /var/www/html/database
 
-# Build assets
+# Build assets (VITE_ environment variables will be available at runtime)
 RUN npm run build
 
 # Clean up node_modules to reduce image size

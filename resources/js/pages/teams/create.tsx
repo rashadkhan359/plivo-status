@@ -3,9 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ServiceSelector } from '@/components/service-selector';
 import React from 'react';
 import AppLayout from '@/layouts/app-layout';
 import { useToast } from '@/hooks/use-toast';
+import { Service } from '@/types/service';
 
 const colorOptions = [
     { value: '#ef4444', label: 'Red' },
@@ -19,13 +22,18 @@ const colorOptions = [
     { value: '#64748b', label: 'Gray' },
 ];
 
-export default function TeamCreate() {
+interface TeamCreateProps {
+    availableServices: Service[];
+}
+
+export default function TeamCreate({ availableServices }: TeamCreateProps) {
     const toast = useToast();
     
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
         color: '#3b82f6',
+        service_ids: [] as number[],
     });
 
     function handleSubmit(e: React.FormEvent) {
@@ -39,6 +47,14 @@ export default function TeamCreate() {
             },
         });
     }
+
+    const handleServiceSelectionChange = (services: Service[]) => {
+        setData('service_ids', services.map(service => service.id));
+    };
+
+    const selectedServices = availableServices.filter(service => 
+        data.service_ids.includes(service.id)
+    );
 
     const breadcrumbs = [
         {
@@ -79,11 +95,12 @@ export default function TeamCreate() {
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="description">Description</Label>
-                                    <Input
+                                    <Textarea
                                         id="description"
                                         value={data.description}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setData('description', e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setData('description', e.target.value)}
                                         placeholder="Brief description of the team's responsibilities"
+                                        rows={3}
                                     />
                                     {errors.description && <p className="text-sm text-red-500">{errors.description}</p>}
                                 </div>
@@ -110,6 +127,23 @@ export default function TeamCreate() {
                                         Choose a color to help identify this team throughout the system
                                     </p>
                                     {errors.color && <p className="text-sm text-red-500">{errors.color}</p>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-semibold">Team Services</h2>
+                                <div className="grid gap-2">
+                                    <Label>Services to Manage (Optional)</Label>
+                                    <ServiceSelector
+                                        services={availableServices}
+                                        selectedServices={selectedServices}
+                                        onSelectionChange={handleServiceSelectionChange}
+                                        placeholder="Select services this team will manage..."
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Select services that this team will be responsible for managing. You can add or remove services later.
+                                    </p>
+                                    {errors.service_ids && <p className="text-sm text-red-500">{errors.service_ids}</p>}
                                 </div>
                             </div>
 
