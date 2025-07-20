@@ -21,6 +21,35 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
+// Temporary debug route - REMOVE AFTER DEBUGGING
+Route::get('/debug-env', function () {
+    if (app()->environment('production')) {
+        return response()->json([
+            'error' => 'Debug route disabled in production'
+        ]);
+    }
+    
+    return response()->json([
+        'app_url' => config('app.url'),
+        'app_env' => config('app.env'),
+        'mail_mailer' => config('mail.default'),
+        'mail_host' => config('mail.mailers.smtp.host'),
+        'mail_port' => config('mail.mailers.smtp.port'),
+        'mail_encryption' => config('mail.mailers.smtp.scheme'),
+        'mail_username_set' => !empty(config('mail.mailers.smtp.username')),
+        'mail_password_set' => !empty(config('mail.mailers.smtp.password')),
+        'queue_connection' => config('queue.default'),
+        'broadcast_connection' => config('broadcasting.default'),
+        'pusher_app_id_set' => !empty(config('broadcasting.connections.pusher.app_id')),
+        'pusher_app_key_set' => !empty(config('broadcasting.connections.pusher.key')),
+        'pusher_app_secret_set' => !empty(config('broadcasting.connections.pusher.secret')),
+        'pusher_cluster_set' => !empty(config('broadcasting.connections.pusher.options.cluster')),
+        'session_secure' => config('session.secure'),
+        'vite_pusher_key' => env('VITE_PUSHER_APP_KEY'),
+        'vite_pusher_cluster' => env('VITE_PUSHER_APP_CLUSTER'),
+    ]);
+});
+
 // Homepage (landing/marketing)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
