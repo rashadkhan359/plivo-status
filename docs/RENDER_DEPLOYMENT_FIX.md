@@ -5,9 +5,9 @@ This guide addresses the email configuration and Echo/Pusher websocket issues in
 ## Issues Fixed
 
 1. **Email Configuration**: Missing Gmail app password and port
-2. **Queue Processing**: Added queue workers for asynchronous email processing
+2. **Queue Processing**: Using sync queue for simplicity (emails sent synchronously)
 3. **Echo/Pusher**: Using placeholder values instead of real credentials
-4. **Queue Tables**: Missing database tables for queue processing
+4. **HTTPS**: Mixed content errors due to HTTP URLs
 
 ## Required Environment Variables for Render
 
@@ -24,9 +24,9 @@ MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 ```
 
-### Queue Configuration
+### Queue Configuration (Simple)
 ```
-QUEUE_CONNECTION=database
+QUEUE_CONNECTION=sync
 ```
 
 ### Broadcasting Configuration (Pusher)
@@ -64,27 +64,34 @@ VITE_PUSHER_APP_CLUSTER=your_pusher_cluster
 
 ## Changes Made
 
-### 1. Supervisor Configuration (`docker/supervisor/supervisord.conf`)
-Added queue worker to process background jobs:
-```ini
-[program:queue-worker]
-command=php /var/www/html/artisan queue:work --sleep=3 --tries=3 --max-time=3600
-stdout_logfile=/dev/stdout
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/stderr
-stderr_logfile_maxbytes=0
-autorestart=true
-startretries=0
-priority=300
-user=www-data
+### 1. HTTPS Middleware (`app/Http/Middleware/ForceHttps.php`)
+Added middleware to force HTTPS in production:
+```php
+class ForceHttps
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (app()->environment('production') && !$request->isSecure()) {
+            return redirect()->secure($request->getRequestUri());
+        }
+        return $next($request);
+    }
+}
 ```
 
-### 2. Entrypoint Script (`docker/entrypoint.sh`)
-Added queue table creation:
-```bash
-# Create queue tables if using database queue
-php artisan queue:table --force
-php artisan migrate --force
+### 2. Session Configuration (`render.yaml`)
+Added secure cookie configuration:
+```yaml
+- key: SESSION_SECURE_COOKIE
+  value: true
+```
+
+### 3. Debug Route (`routes/web.php`)
+Added temporary debug route for environment variable checking:
+```php
+Route::get('/debug-env', function () {
+    // Returns environment variable status
+});
 ```
 
 ## Testing Email
@@ -92,7 +99,7 @@ php artisan migrate --force
 After deployment, test email functionality:
 
 1. Try the "Forgot Password" feature
-2. Check the logs for any email errors
+2. Check if you receive the email (may take a few seconds with sync queue)
 3. Verify emails are being sent to your Gmail account
 
 ## Testing WebSocket
@@ -110,7 +117,7 @@ After updating Pusher credentials:
 - Check Gmail app password is correct
 - Verify `MAIL_PORT=587` (not 465)
 - Ensure `MAIL_ENCRYPTION=tls`
-- Check queue workers are running
+- With sync queue, emails are sent immediately (may take a few seconds)
 
 ### WebSocket Issues
 - Verify Pusher credentials are correct
@@ -118,10 +125,10 @@ After updating Pusher credentials:
 - Ensure `VITE_PUSHER_APP_KEY` matches `PUSHER_APP_KEY`
 - Check browser console for connection errors
 
-### Queue Issues
-- Verify `QUEUE_CONNECTION=database`
-- Check queue workers are running in supervisor
-- Monitor logs for queue processing errors
+### HTTPS Issues
+- Verify `APP_URL=https://your-app.onrender.com`
+- Check `SESSION_SECURE_COOKIE=true`
+- ForceHttps middleware should redirect HTTP to HTTPS
 
 ## Current render.yaml Issues
 
@@ -142,4 +149,15 @@ These need to be replaced with real Pusher credentials or removed to use environ
 1. Update all environment variables in Render dashboard
 2. Redeploy the application
 3. Test email and websocket functionality
-4. Monitor logs for any remaining issues 
+4. Monitor logs for any remaining issues
+5. Remove debug route after confirming everything works
+
+## Why Sync Queue?
+
+For this assignment/demo, we're using `QUEUE_CONNECTION=sync` because:
+- **Simplicity**: No need for queue workers or database tables
+- **Immediate feedback**: Emails are sent synchronously
+- **Easier debugging**: No background job processing to troubleshoot
+- **Sufficient for demo**: Handles the email requirements without complexity
+
+In production, you'd typically use `database` or `redis` queues for better performance and reliability. 

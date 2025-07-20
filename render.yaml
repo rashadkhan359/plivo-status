@@ -36,7 +36,7 @@ services:
       - key: SESSION_SECURE_COOKIE
         value: true
       - key: QUEUE_CONNECTION
-        value: database
+        value: sync
       - key: BROADCAST_CONNECTION
         value: pusher
       - key: FILESYSTEM_DISK

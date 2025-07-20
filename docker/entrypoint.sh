@@ -14,10 +14,6 @@ php artisan key:generate --no-interaction --force
 # Run migrations
 php artisan migrate --force
 
-# Create queue tables if using database queue
-php artisan queue:table --force
-php artisan migrate --force
-
 # Ensure system admin exists
 php artisan admin:ensure
 
