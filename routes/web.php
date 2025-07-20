@@ -16,8 +16,24 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
-// Health check for Render
+// Simple health check for Render (no middleware)
 Route::get('/health', function () {
+    return response()->json(['status' => 'ok', 'timestamp' => now()]);
+})->middleware([]);
+
+// Test route to check if app is working
+Route::get('/test', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Application is working',
+        'timestamp' => now(),
+        'app_env' => config('app.env'),
+        'app_url' => config('app.url'),
+    ]);
+})->middleware([]);
+
+// Health check for Render
+Route::get('/health-check', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
 
