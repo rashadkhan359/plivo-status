@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "plivo/beacon",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Beacon is a status page for your services.",
     "keywords": [
         "laravel",
-        "framework"
+        "framework",
+        "status",
+        "status-page"
     ],
     "license": "MIT",
     "require": {

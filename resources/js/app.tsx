@@ -72,7 +72,7 @@ async function initializeEcho() {
     }
 }
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Beacon';
 
 // Set up global error handling
 router.on('error', (event) => {

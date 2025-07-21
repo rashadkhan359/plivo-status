@@ -27,7 +27,7 @@ return [
     */
 
     'panel' => [
-        'title' => env('ADMIN_PANEL_TITLE', 'Plivo Status Admin'),
+        'title' => env('ADMIN_PANEL_TITLE', 'Beacon Admin'),
         'description' => env('ADMIN_PANEL_DESCRIPTION', 'System Administration Panel'),
         'logo' => env('ADMIN_PANEL_LOGO', null),
     ],

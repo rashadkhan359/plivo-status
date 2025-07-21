@@ -31,7 +31,7 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ config('app.name', 'Beacon') }}</title>
 
         <link rel="icon" href="/logo.ico" sizes="any">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
