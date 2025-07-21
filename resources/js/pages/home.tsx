@@ -22,15 +22,61 @@ import {
     Activity,
     Eye,
     Lock,
-    RefreshCw
+    RefreshCw,
+    LayoutDashboard
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import Header from '../layouts/home/header';
 import Footer from '../layouts/home/footer';
 
-export default function Home() {
+export default function Home({ auth }: { auth: any }) {
   const [orgSlug, setOrgSlug] = useState('');
+
+  // If user is authenticated, show dashboard redirect
+  if (auth?.user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Head>
+          <title>Welcome Back - StatusPage</title>
+        </Head>
+        <Header auth={auth} />
+        
+        <section className="relative overflow-hidden py-20 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <h1 className="text-4xl md:text-6xl font-bold mb-6">
+                Welcome back, <span className="text-primary">{auth.user.name}</span>!
+              </h1>
+              <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+                Ready to manage your status pages and monitor your services?
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link href={route('dashboard')}>
+                  <Button size="lg" className="text-lg px-8 py-6">
+                    <LayoutDashboard className="mr-2 h-5 w-5" />
+                    Go to Dashboard
+                  </Button>
+                </Link>
+                <Link href={route('status.public', { organization: 'demo-org' })}>
+                  <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+                    <Eye className="mr-2 h-5 w-5" />
+                    View Demo
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+        
+        <Footer />
+      </div>
+    );
+  }
 
   const features = [
     {
@@ -103,7 +149,7 @@ export default function Home() {
         <meta name="description" content="Create beautiful, real-time status pages for your organization. Multi-tenant, real-time, and easy to use." />
       </Head>
 
-     <Header />
+     <Header auth={auth} />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-4">

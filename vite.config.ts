@@ -8,17 +8,6 @@ export default defineConfig(({ mode }) => {
     // Load environment variables
     const env = loadEnv(mode, process.cwd(), '');
     
-    // Debug environment variables during build
-    console.log('🔧 Vite Build Environment Debug:');
-    console.log('Mode:', mode);
-    console.log('VITE_PUSHER_APP_KEY:', env.VITE_PUSHER_APP_KEY ? 'SET' : 'NOT SET');
-    console.log('VITE_PUSHER_APP_CLUSTER:', env.VITE_PUSHER_APP_CLUSTER || 'NOT SET');
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    
-    // Log all VITE_ prefixed variables
-    const viteVars = Object.keys(env).filter(key => key.startsWith('VITE_'));
-    console.log('All VITE_ variables:', viteVars);
-    
     return {
         plugins: [
             laravel({

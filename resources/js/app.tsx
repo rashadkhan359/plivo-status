@@ -15,24 +15,12 @@ import React from 'react';
 // @ts-ignore
 window.Pusher = Pusher;
 
-// Debug environment variables
-console.log('🚀 Environment debug:', {
-    NODE_ENV: import.meta.env.MODE,
-    DEV: import.meta.env.DEV,
-    PROD: import.meta.env.PROD,
-    VITE_PUSHER_APP_KEY: import.meta.env.VITE_PUSHER_APP_KEY ? 'SET' : 'NOT SET',
-    VITE_PUSHER_APP_CLUSTER: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'NOT SET',
-    PUSHER_KEY_PREFIX: import.meta.env.VITE_PUSHER_APP_KEY ? 
-        import.meta.env.VITE_PUSHER_APP_KEY.substring(0, 4) + '...' : 'NONE'
-});
-
 async function initializeEcho() {
     let pusherKey = import.meta.env.VITE_PUSHER_APP_KEY;
     let pusherCluster = import.meta.env.VITE_PUSHER_APP_CLUSTER || 'ap2';
 
     // If environment variables are not available, try fetching from server
     if (!pusherKey) {
-        console.log('🔄 Environment variables not found, fetching from server...');
         try {
             const response = await fetch('/broadcasting/config');
             const config = await response.json();
@@ -55,12 +43,6 @@ async function initializeEcho() {
     }
 
     try {
-        console.log('🔧 Initializing Echo with Pusher...', {
-            key: pusherKey.substring(0, 4) + '...',
-            cluster: pusherCluster,
-            forceTLS: true
-        });
-
         const echo = new Echo({
             broadcaster: 'pusher',
             key: pusherKey,
@@ -78,35 +60,6 @@ async function initializeEcho() {
                 },
             },
         });
-
-        console.log('✅ Echo initialized successfully');
-        
-        // Test the connection immediately
-        if (echo.connector && echo.connector.pusher) {
-            const pusher = echo.connector.pusher;
-            console.log('📡 Pusher instance created:', {
-                state: pusher.connection.state,
-                key: pusher.key,
-                cluster: pusher.cluster
-            });
-            
-            // Log connection attempts
-            pusher.connection.bind('connecting', () => {
-                console.log('🔄 Pusher: Attempting to connect...');
-            });
-            
-            pusher.connection.bind('connected', () => {
-                console.log('✅ Pusher: Successfully connected!');
-            });
-            
-            pusher.connection.bind('error', (error: any) => {
-                console.error('❌ Pusher: Connection error:', error);
-            });
-            
-            pusher.connection.bind('failed', () => {
-                console.error('❌ Pusher: Connection failed');
-            });
-        }
 
         // Make Echo available globally
         // @ts-ignore

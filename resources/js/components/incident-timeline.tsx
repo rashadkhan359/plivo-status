@@ -38,8 +38,6 @@ export function IncidentTimeline({
   compact = false
 }: IncidentTimelineProps) {
   const [updates, setUpdates] = useState<IncidentUpdate[]>(initialUpdates);
-  console.log('IncidentTimeline: initialUpdates:', initialUpdates);
-  console.log('IncidentTimeline: updates:', updates.length);
 
   // Update local state when props change
   useEffect(() => {

@@ -54,8 +54,6 @@ export default function OrganizationShowPage({ organization, stats }: Organizati
         return colors[severity] || 'bg-gray-100 text-gray-800';
     };
 
-    console.log(org.users);
-
     return (
         <AppSidebarLayout breadcrumbs={breadcrumbs}>
             <Head title={`Admin: ${org.name}`} />
