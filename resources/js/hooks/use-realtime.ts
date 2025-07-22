@@ -15,7 +15,6 @@ export function useRealtime() {
     const checkEcho = () => {
       // @ts-ignore
       if (!window.Echo) {
-        console.log('Echo not available yet, retrying in 1 second...');
         setState('connecting');
         
         // Retry after 1 second, but limit attempts
@@ -33,7 +32,6 @@ export function useRealtime() {
       
       // Check if Echo has a connector (meaning it's properly initialized)
       if (!echo.connector) {
-        console.log('Echo available but connector not ready, retrying in 500ms...');
         if (connectionAttempts.current < maxRetries) {
           connectionAttempts.current++;
           retryTimeoutRef.current = setTimeout(checkEcho, 500);
@@ -43,7 +41,6 @@ export function useRealtime() {
       
       // Echo is properly initialized
       if (!isInitialized.current) {
-        console.log('Echo properly initialized');
         isInitialized.current = true;
       }
       
@@ -54,41 +51,28 @@ export function useRealtime() {
         if (echo.connector.pusher) {
           const pusher = echo.connector.pusher;
           
-          console.log('Pusher connection state:', pusher.connection.state);
-          console.log('Pusher connection details:', {
-            key: pusher.key,
-            cluster: pusher.cluster,
-            encrypted: pusher.encrypted,
-            enabledTransports: pusher.enabledTransports,
-          });
-          
           // Set initial state based on current connection
           setState(pusher.connection.state);
           
           // Bind to connection state changes
           pusher.connection.bind('connecting', () => {
-            console.log('Pusher connecting...');
             setState('connecting');
           });
           
           pusher.connection.bind('connected', () => {
-            console.log('Pusher connected successfully');
             setState('connected');
             connectionAttempts.current = 0; // Reset retry counter on success
           });
           
           pusher.connection.bind('disconnected', () => {
-            console.log('Pusher disconnected');
             setState('disconnected');
           });
           
           pusher.connection.bind('unavailable', () => {
-            console.log('Pusher unavailable');
             setState('disconnected');
           });
           
           pusher.connection.bind('failed', (error: any) => {
-            console.error('Pusher connection failed:', error);
             setState('disconnected');
           });
           
@@ -99,7 +83,6 @@ export function useRealtime() {
           }
         } else {
           console.warn('Echo connector available but Pusher not initialized');
-          console.log('Echo connector:', echo.connector);
           setState('connecting');
           
           // Retry after a short delay to wait for Pusher initialization
@@ -109,7 +92,6 @@ export function useRealtime() {
           }
         }
       } catch (error) {
-        console.warn('Echo connection error:', error);
         setState('disconnected');
       }
     };
@@ -156,7 +138,6 @@ export function useRealtime() {
     }
     
     try {
-      console.log('Subscribing to:', channel, event);
       const channelInstance = echoRef.current.channel(channel);
       
       // Add error handling for the channel subscription
@@ -164,30 +145,14 @@ export function useRealtime() {
         console.error('Failed to get channel instance for:', channel);
         return;
       }
-      
-      // Add debugging for the channel subscription
-      console.log('Channel instance created:', {
-        channel: channel,
-        event: event,
-        hasListen: typeof channelInstance.listen === 'function',
-        hasStopListening: typeof channelInstance.stopListening === 'function',
-      });
+
       
       // Add dot prefix to event name for proper Laravel Echo handling
       const eventName = event.startsWith('.') ? event : `.${event}`;
       
       channelInstance.listen(eventName, (data: any) => {
-        console.log(`Event received on ${channel}.${eventName}:`, data);
         callback(data);
       });
-      
-      // Log successful subscription
-      console.log('Successfully subscribed to:', channel, eventName);
-      
-      // Also log the channel state for debugging
-      if (channelInstance.subscribed) {
-        console.log('Channel subscription confirmed for:', channel);
-      }
       
       // Add error handling for the channel
       if (channelInstance.error) {
@@ -201,7 +166,6 @@ export function useRealtime() {
   function unsubscribe(channel: string, event: string) {
     if (!echoRef.current) return;
     try {
-      console.log('Unsubscribing from:', channel, event);
       // Add dot prefix to event name for proper Laravel Echo handling
       const eventName = event.startsWith('.') ? event : `.${event}`;
       echoRef.current.channel(channel).stopListening(eventName);

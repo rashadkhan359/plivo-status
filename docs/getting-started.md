@@ -88,6 +88,9 @@ php artisan db:seed
 
 # Run demo data (optional)
 php artisan db:seed --class=DemoDataSeeder
+
+# Or use the demo command for easier management
+php artisan demo:ensure
 ```
 
 ### 8. Configure Broadcasting (Optional)
@@ -160,10 +163,36 @@ After running the seeders, you'll have these default accounts:
 - **Email**: admin@plivo-status.com
 - **Password**: password
 
-#### Demo Organization
-- **Organization**: Demo Corp
-- **Admin**: demo@example.com
-- **Password**: password
+#### XKCD-Robotics Demo Organization
+- **Organization**: XKCD-Robotics
+- **Owner**: owner@gmail.com / password
+- **Admin**: admin@gmail.com / password
+- **Member**: rashadkhan359@gmail.com / password
+
+**Teams:**
+- **Infrastructure Team** (Blue)
+  - Lead: teamlead1@gmail.com / password
+  - Members: member1@gmail.com, member3@gmail.com / password
+- **AI & Robotics Team** (Green)
+  - Lead: teamlead2@gmail.com / password
+  - Member: member2@gmail.com / password
+
+**Demo Services (Distributed by Team):**
+- **AI & Robotics Team:**
+  - Robot Control System (Operational)
+  - AI Processing Engine (Operational)
+- **Infrastructure Team:**
+  - Sensor Network (Degraded)
+  - Communication Hub (Operational)
+  - Power Management (Partial Outage)
+
+**Demo Data Includes:**
+- 2 teams with proper role hierarchy and permissions
+- 8 users with different roles and permissions
+- 5 robotics-themed services distributed across teams
+- Active and resolved incidents with proper updates
+- Scheduled and completed maintenance records
+- 30 days of status history for uptime metrics
 
 ### 3. Create Your First Organization
 

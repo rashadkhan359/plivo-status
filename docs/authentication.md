@@ -1,6 +1,6 @@
 # Authentication & Permissions
 
-This document covers the authentication system, user management, roles, and permissions in the Plivo Status application.
+This document covers the authentication system, user management, roles, and permissions in the Beacon application.
 
 ## Authentication System
 

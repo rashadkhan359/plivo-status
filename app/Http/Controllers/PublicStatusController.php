@@ -8,6 +8,7 @@ use App\Models\Incident;
 use App\Models\Maintenance;
 use App\Services\UptimeMetricsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Http\Resources\ServiceResource;
@@ -22,6 +23,16 @@ class PublicStatusController extends Controller
     public function show(Request $request, $slug): Response
     {
         $organization = Organization::where('slug', $slug)->firstOrFail();
+        
+        // Debug logging for Echo/Pusher issues
+        Log::info('Public status page accessed', [
+            'organization' => $organization->slug,
+            'pusher_app_key' => env('PUSHER_APP_KEY'),
+            'pusher_app_cluster' => env('PUSHER_APP_CLUSTER'),
+            'vite_pusher_key' => env('VITE_PUSHER_APP_KEY'),
+            'vite_pusher_cluster' => env('VITE_PUSHER_APP_CLUSTER'),
+            'broadcast_connection' => config('broadcasting.default'),
+        ]);
         
         // Only show public services
         $services = Service::forOrganization($organization->id)

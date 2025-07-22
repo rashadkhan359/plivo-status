@@ -34,10 +34,6 @@ export function AppSidebar() {
         navItems.push({ title: 'Organizations', href: route('admin.organizations.index'), icon: Shield });
     }
 
-    // Settings for users with organization management permissions or higher roles
-    if (currentPermissions?.organization?.manage_organization || currentRole === 'owner' || currentRole === 'admin' || currentRole === 'system_admin') {
-        navItems.push({ title: 'Settings', href: '/settings', icon: Settings });
-    }
 
     return (
         <Sidebar collapsible="icon" variant="inset">

@@ -46,16 +46,34 @@ class SystemAdminService
             return $existingUser;
         }
 
+        // Find or create demo organization for system admin
+        $demoOrg = \App\Models\Organization::where('name', 'Demo Organization')->first();
+        if (!$demoOrg) {
+            // Create demo organization if it doesn't exist
+            $demoOrg = \App\Models\Organization::create([
+                'name' => 'Demo Organization',
+                'slug' => 'demo-organization',
+                'domain' => null,
+                'settings' => [
+                    'allow_registrations' => true,
+                    'default_role' => 'member'
+                ],
+                'timezone' => 'UTC',
+            ]);
+            Log::info("Created demo organization for system admin");
+        }
+
         // Create new system admin
         $user = User::create([
             'name' => $name,
             'email' => $email,
             'password' => Hash::make($password),
             'is_system_admin' => true,
+            'organization_id' => $demoOrg->id, // Connect to demo organization
             'email_verified_at' => now(),
         ]);
 
-        Log::info("System admin created: {$email}");
+        Log::info("System admin created: {$email} connected to demo organization");
         return $user;
     }
 

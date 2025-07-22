@@ -53,7 +53,7 @@ export default function AcceptInvitation({ invitation }: AcceptInvitationProps) 
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
-                return <Badge variant="default" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Admin</Badge>;
+                return <Badge variant="warning">Admin</Badge>;
             case 'member':
                 return <Badge variant="secondary">Member</Badge>;
             default:

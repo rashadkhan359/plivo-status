@@ -82,7 +82,7 @@ export function TeamMemberManagement({ team, availableUsers, canManageMembers }:
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'lead':
-                return <Badge variant="default" className="bg-orange-100 text-orange-800">Lead</Badge>;
+                return <Badge variant="info">Lead</Badge>;
             case 'member':
                 return <Badge variant="secondary">Member</Badge>;
             default:

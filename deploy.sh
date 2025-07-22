@@ -2,7 +2,7 @@
 
 set -e
 
-echo "🚀 Plivo Status Deployment Script"
+echo "🚀 Beacon Deployment Script"
 echo "=================================="
 
 # Colors for output

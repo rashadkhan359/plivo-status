@@ -37,7 +37,6 @@ export function MaintenanceList({ maintenances, loading, error, orgId, orgSlug }
         setMaintenanceList(maintenances.data);
     }, [maintenances.data]);
 
-    console.log(`maintenances`, maintenances);
     if (loading) {
         return (
             <div className="space-y-4">

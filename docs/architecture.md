@@ -1,6 +1,6 @@
 # Architecture Overview
 
-This document provides a comprehensive overview of the Plivo Status application architecture, design patterns, and technical decisions.
+This document provides a comprehensive overview of the Beacon application architecture, design patterns, and technical decisions.
 
 ## System Architecture
 

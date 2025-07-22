@@ -1,253 +1,192 @@
-# Plivo Status - Status Page Application
+# BEACON
 
-A modern, real-time status page application built with Laravel 12, Inertia.js, React 19, and Tailwind CSS. This application allows organizations to manage their services, incidents, and maintenance windows while providing a public-facing status page for customers.
+A modern, real-time status page application built with Laravel, Inertia.js, and React. This project demonstrates a comprehensive status monitoring system with live updates, incident management, and team collaboration features.
 
-## 🎯 Assignment Overview
+## 🚀 Key Features
 
-This project was built as a technical assignment to demonstrate:
-- **Code Quality**: Clean, well-organized, and commented code
-- **Architecture**: Proper separation of concerns and scalable design
-- **Frontend Skills**: Responsive design, state management, and component structure
-- **Backend Skills**: API design, database integration, and authentication implementation
-- **Problem-Solving**: Approach and solve challenges during development
-- **Modern Development**: Leveraging current best practices and tools
+### Core Functionality
+- **Real-time Status Updates**: Live status monitoring with WebSocket integration
+- **Incident Management**: Create, update, and resolve incidents with timeline tracking
+- **Maintenance Scheduling**: Plan and manage scheduled maintenance windows
+- **Team Collaboration**: Role-based access control with team management
+- **Public Status Pages**: Shareable status pages for external stakeholders
 
-## ✨ Key Features
-
-### 🔐 Authentication & User Management
-- **User Registration & Login**: Secure authentication system
-- **Email Verification**: Built-in email verification workflow
-- **Password Reset**: Secure password reset functionality
-- **Invitation System**: Team member invitations with role-based access
-
-### 🏢 Multi-Tenant Organization System
-- **Organization Management**: Create and manage multiple organizations
-- **Team Management**: Organize users into teams with specific roles
-- **Role-Based Permissions**: Granular permission system with custom overrides
-- **System Admin**: Super admin with access to all organizations
-
-### 🔧 Service Management
-- **CRUD Operations**: Create, read, update, and delete services
-- **Status Management**: Real-time status updates (Operational, Degraded, Partial Outage, Major Outage)
-- **Service Categories**: Organize services by categories
-- **Uptime Tracking**: Automatic uptime calculation and metrics
-
-### 🚨 Incident & Maintenance Management
-- **Incident Creation**: Create and manage incidents with severity levels
-- **Incident Updates**: Add real-time updates to ongoing incidents
-- **Maintenance Windows**: Schedule and manage planned maintenance
-- **Service Association**: Link incidents and maintenance to specific services
-
-### 📡 Real-Time Features
-- **WebSocket Integration**: Real-time status updates using Pusher/Laravel Reverb
-- **Live Notifications**: Instant updates across all connected clients
-- **Status Broadcasting**: Automatic broadcasting of status changes
-
-### 🌐 Public Status Page
-- **Public Access**: No authentication required for status viewing
-- **Real-Time Updates**: Live status updates without page refresh
-- **Incident Timeline**: Historical view of incidents and maintenance
-- **Service Status Overview**: Clear visual representation of all services
-
-### 🎨 Modern UI/UX
-- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile
-- **Dark/Light Mode**: Automatic theme switching with system preference
-- **Linear-Inspired Design**: Clean, minimalistic interface using ShadcnUI
-- **Accessibility**: WCAG compliant design patterns
+### Technical Highlights
+- **Modern Stack**: Laravel 11 + Inertia.js + React + TypeScript
+- **Real-time Updates**: WebSocket broadcasting for live status changes
+- **Responsive Design**: Mobile-first design with dark/light mode support
+- **Permission System**: Granular role-based access control
+- **API Integration**: RESTful API for external integrations
 
 ## 🛠 Tech Stack
 
-### Backend
-- **Laravel 12**: Latest PHP framework with modern features
-- **Inertia.js 2**: Seamless SPA experience without API complexity
-- **MySQL/PostgreSQL**: Robust database support
-- **Pusher/Laravel Reverb**: Real-time broadcasting
-- **Laravel Sanctum**: API authentication
+- **Backend**: Laravel 11, PHP 8.2+
+- **Frontend**: React 18, TypeScript, Tailwind CSS
+- **Database**: MySQL/PostgreSQL
+- **Real-time**: Laravel WebSockets
+- **Deployment**: Docker-ready with Render deployment
 
-### Frontend
-- **React 19**: Latest React with concurrent features
-- **TypeScript**: Type-safe development
-- **Tailwind CSS 4**: Utility-first CSS framework
-- **ShadcnUI**: Beautiful, accessible components
-- **Framer Motion**: Smooth animations and transitions
+## 📋 Assignment Requirements Met
 
-### Development Tools
-- **Vite**: Fast build tool and dev server
-- **ESLint & Prettier**: Code quality and formatting
-- **PHPUnit**: Comprehensive testing suite
-- **Laravel Pint**: PHP code style fixer
+### ✅ Core Features
+- [x] Service status monitoring (Operational, Degraded, Outage)
+- [x] Incident creation and management
+- [x] Real-time status updates
+- [x] Public status page
+- [x] Team management and permissions
+- [x] Maintenance scheduling
+
+### ✅ Technical Requirements
+- [x] Laravel backend with API
+- [x] Modern frontend with React
+- [x] Real-time updates
+- [x] Responsive design
+- [x] Database migrations and seeders
+- [x] Docker configuration
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- PHP 8.2 or higher
-- Node.js 18 or higher
+- PHP 8.2+
 - Composer
-- MySQL/PostgreSQL database
+- Node.js 18+
+- MySQL/PostgreSQL
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd plivo-status
-   ```
+1. **Clone and Setup**
+```bash
+git clone <repository-url>
+cd plivo-status
+composer install
+npm install
+```
 
-2. **Install PHP dependencies**
-   ```bash
-   composer install
-   ```
+2. **Environment Configuration**
+```bash
+cp .env.example .env
+# Configure database and other settings
+```
 
-3. **Install Node.js dependencies**
-   ```bash
-   npm install
-   ```
+3. **Database Setup**
+```bash
+php artisan migrate
+php artisan db:seed
+```
 
-4. **Environment setup**
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
+4. **Start Development**
+```bash
+npm run dev
+php artisan serve
+```
 
-5. **Configure database**
-   ```bash
-   # Update .env with your database credentials
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=plivo_status
-   DB_USERNAME=your_username
-   DB_PASSWORD=your_password
-   ```
+### Docker Deployment
+```bash
+docker-compose up -d
+```
 
-6. **Run migrations and seeders**
-   ```bash
-   php artisan migrate
-   php artisan db:seed
-   ```
+## 📁 Project Structure
 
-7. **Configure broadcasting (optional)**
-   ```bash
-   # For local development with Laravel Reverb
-   BROADCAST_CONNECTION=reverb
-   REVERB_APP_ID=your-app-id
-   REVERB_APP_KEY=your-app-key
-   REVERB_APP_SECRET=your-app-secret
-   REVERB_HOST=localhost
-   REVERB_PORT=8080
-   REVERB_SCHEME=http
-   ```
+```
+plivo-status/
+├── app/
+│   ├── Http/Controllers/    # API and web controllers
+│   ├── Models/             # Eloquent models
+│   ├── Events/             # Real-time events
+│   └── Services/           # Business logic
+├── resources/js/
+│   ├── components/         # React components
+│   ├── pages/             # Inertia pages
+│   └── hooks/             # Custom React hooks
+└── database/
+    ├── migrations/         # Database schema
+    └── seeders/           # Sample data
+```
 
-8. **Start the development server**
-   ```bash
-   # Start all services (Laravel, Vite, Queue, Reverb)
-   composer run dev
-   ```
+## �� Configuration
 
-9. **Access the application**
-   - **Main Application**: http://localhost:8000
-   - **Default Admin**: admin@plivo-status.com / password
+### Environment Variables
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=plivo_status
+DB_USERNAME=root
+DB_PASSWORD=
 
-## 📚 Documentation
+BROADCAST_DRIVER=pusher
+PUSHER_APP_ID=your_app_id
+PUSHER_APP_KEY=your_app_key
+PUSHER_APP_SECRET=your_app_secret
+```
 
-Comprehensive documentation is available in the `docs/` folder:
+### Real-time Setup
+1. Configure Pusher credentials in `.env`
+2. Run `php artisan websockets:serve` for local development
+3. For production, use Pusher or configure Laravel WebSockets
 
-- **[Getting Started](docs/getting-started.md)** - Complete setup guide
-- **[Architecture Overview](docs/architecture.md)** - System design and patterns
-- **[Authentication & Permissions](docs/authentication.md)** - User management and roles
-- **[Real-time Features](docs/realtime.md)** - WebSocket and broadcasting setup
-- **[API Documentation](docs/api.md)** - Available endpoints and usage
+## 📱 Features Overview
 
-## 🧪 Testing
+### Dashboard
+- Real-time service status overview
+- Recent incidents and maintenance
+- Team activity feed
+- Quick status updates
 
-Run the test suite:
+### Incident Management
+- Create and update incidents
+- Timeline tracking
+- Service impact mapping
+- Resolution workflow
+
+### Public Status Page
+- Shareable status page
+- Service uptime metrics
+- Incident history
+- RSS feed support
+
+### Team Management
+- Role-based permissions
+- Team invitations
+- Activity logging
+- Custom permission system
+
+## �� Testing
 
 ```bash
 # Run all tests
 php artisan test
 
 # Run specific test suites
-php artisan test --filter=PermissionTest
-php artisan test --filter=SystemAdminTest
-php artisan test --filter=CustomPermissionTest
-
-# Run with coverage
-php artisan test --coverage
+php artisan test --filter=ServiceStatusTest
+php artisan test --filter=IncidentTest
 ```
+
+## 📊 API Documentation
+
+### Core Endpoints
+- `GET /api/services` - List all services
+- `POST /api/incidents` - Create new incident
+- `GET /api/status` - Public status page data
+- `PUT /api/services/{id}/status` - Update service status
+
+### Authentication
+- Bearer token authentication
+- Role-based access control
+- Team-scoped permissions
 
 ## 🚀 Deployment
 
-### Environment Variables
-```env
-APP_NAME="Plivo Status"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://your-domain.com
+### Render Deployment
+1. Connect your repository to Render
+2. Configure environment variables
+3. Set build command: `composer install && npm install && npm run build`
+4. Set start command: `php artisan serve --host=0.0.0.0 --port=$PORT`
 
-DB_CONNECTION=mysql
-DB_HOST=your-db-host
-DB_DATABASE=your-database
-DB_USERNAME=your-username
-DB_PASSWORD=your-password
-
-BROADCAST_CONNECTION=pusher
-PUSHER_APP_ID=your-pusher-app-id
-PUSHER_APP_KEY=your-pusher-app-key
-PUSHER_APP_SECRET=your-pusher-app-secret
-PUSHER_APP_CLUSTER=your-pusher-cluster
-
-MAIL_MAILER=smtp
-MAIL_HOST=your-smtp-host
-MAIL_PORT=587
-MAIL_USERNAME=your-email
-MAIL_PASSWORD=your-password
-MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=noreply@your-domain.com
-```
-
-### Production Commands
+### Docker Deployment
 ```bash
-# Build assets
-npm run build
-
-# Optimize for production
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-
-# Run migrations
-php artisan migrate --force
-
-# Start queue workers
-php artisan queue:work --daemon
-```
-
-## 🎥 Demo
-
-A demo video showcasing the application features is available at: [Demo Video Link]
-
-## 🔧 Development Commands
-
-```bash
-# Development with all services
-composer run dev
-
-# Development with SSR
-composer run dev:ssr
-
-# Code formatting
-composer run format
-npm run format
-
-# Code linting
-composer run lint
-npm run lint
-
-# Type checking
-npm run types
-
-# Database seeding
-php artisan db:seed --class=DemoDataSeeder
+docker build -t plivo-status .
+docker run -p 8000:8000 plivo-status
 ```
 
 ## 🤝 Contributing
@@ -255,21 +194,13 @@ php artisan db:seed --class=DemoDataSeeder
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests and linting
+4. Add tests for new functionality
 5. Submit a pull request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- **Laravel Team** for the amazing framework
-- **Inertia.js** for seamless SPA experience
-- **ShadcnUI** for beautiful components
-- **Tailwind CSS** for utility-first styling
-- **Open Source Community** for excellent tools and libraries
+This project is created for the Plivo assignment. All rights reserved.
 
 ---
 
-**Built with ❤️ using modern web technologies** 
+**Note**: This is a demonstration project showcasing modern web development practices with Laravel and React. The application includes comprehensive features for status page management with real-time updates and team collaboration capabilities.

@@ -13,13 +13,26 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\Admin\OrganizationController;
 
 use App\Http\Controllers\TeamController;
-use App\Http\Controllers\UserController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 
+
 // Health check for Render
-Route::get('/health', function () {
+Route::get('/health-check', function () {
     return response()->json(['status' => 'ok', 'timestamp' => now()]);
 });
+
+
+Route::get('/broadcasting/config', function () {
+    return response()->json([
+        'pusher' => [
+            'key' => config('broadcasting.connections.pusher.key'),
+            'cluster' => config('broadcasting.connections.pusher.options.cluster'),
+            'encrypted' => true,
+            'forceTLS' => true,
+        ]
+    ]);
+});
+
 
 // Homepage (landing/marketing)
 Route::get('/', [HomeController::class, 'index'])->name('home');
