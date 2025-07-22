@@ -51,22 +51,33 @@ class EnsureDemoData extends Command
      */
     private function ensureDemoData()
     {
-        // Check if demo organization exists
-        $demoOrg = Organization::where('slug', 'demo-org')->first();
+        // Check if XKCD-Robotics organization exists
+        $demoOrg = Organization::where('slug', 'xkcd-robotics')->first();
         
         if (!$demoOrg) {
-            $this->info('Demo organization not found. Creating...');
+            $this->info('XKCD-Robotics organization not found. Creating...');
             $this->createDemoData();
         } else {
-            $this->info('Demo organization exists: ' . $demoOrg->name);
+            $this->info('XKCD-Robotics organization exists: ' . $demoOrg->name);
             
             // Check if services exist
             $serviceCount = $demoOrg->services()->count();
-            if ($serviceCount < 3) {
+            if ($serviceCount < 5) {
                 $this->info("Only {$serviceCount} services found. Creating missing services...");
                 $this->createDemoServices($demoOrg);
             } else {
-                $this->info("Demo organization has {$serviceCount} services");
+                $this->info("XKCD-Robotics organization has {$serviceCount} services");
+            }
+            
+            // Check if users exist
+            $owner = User::where('email', 'owner@gmail.com')->first();
+            $member = User::where('email', 'member@gmail.com')->first();
+            
+            if (!$owner || !$member) {
+                $this->info('Demo users not found. Creating...');
+                $this->createDemoUsers($demoOrg);
+            } else {
+                $this->info('Demo users exist: ' . $owner->email . ' and ' . $member->email);
             }
         }
     }
@@ -76,10 +87,10 @@ class EnsureDemoData extends Command
      */
     private function recreateDemoData()
     {
-        // Delete existing demo organization and all related data
-        $demoOrg = Organization::where('slug', 'demo-org')->first();
+        // Delete existing XKCD-Robotics organization and all related data
+        $demoOrg = Organization::where('slug', 'xkcd-robotics')->first();
         if ($demoOrg) {
-            $this->info('Deleting existing demo organization...');
+            $this->info('Deleting existing XKCD-Robotics organization...');
             $demoOrg->delete();
         }
         
@@ -92,10 +103,10 @@ class EnsureDemoData extends Command
     private function createDemoData()
     {
         DB::transaction(function () {
-            // Create demo organization
+            // Create XKCD-Robotics organization
             $demoOrg = Organization::create([
-                'name' => 'Demo Organization',
-                'slug' => 'demo-org',
+                'name' => 'XKCD-Robotics',
+                'slug' => 'xkcd-robotics',
                 'domain' => null,
                 'settings' => [
                     'allow_registrations' => false,
@@ -104,38 +115,88 @@ class EnsureDemoData extends Command
                 'timezone' => 'UTC',
             ]);
             
-            $this->info('Created demo organization: ' . $demoOrg->name);
+            $this->info('Created XKCD-Robotics organization: ' . $demoOrg->name);
             
-            // Create demo user
-            $demoUser = User::create([
-                'name' => 'Demo Admin',
-                'email' => 'demo@example.com',
-                'password' => bcrypt('password'),
-                'organization_id' => $demoOrg->id,
-                'role' => 'admin',
-                'email_verified_at' => now(),
-            ]);
-            
-            // Add user to organization
-            $demoOrg->users()->attach($demoUser->id, [
-                'role' => 'admin',
-                'permissions' => ['*'],
-                'is_active' => true,
-                'invited_by' => $demoUser->id,
-                'joined_at' => now(),
-            ]);
-            
-            $this->info('Created demo user: ' . $demoUser->email);
+            // Create demo users
+            $owner = $this->createDemoUsers($demoOrg);
             
             // Create services
-            $this->createDemoServices($demoOrg, $demoUser);
+            $this->createDemoServices($demoOrg, $owner);
             
             // Create some incidents
-            $this->createDemoIncidents($demoOrg, $demoUser);
+            $this->createDemoIncidents($demoOrg, $owner);
             
             // Create some maintenance
-            $this->createDemoMaintenance($demoOrg, $demoUser);
+            $this->createDemoMaintenance($demoOrg, $owner);
         });
+    }
+    
+    /**
+     * Create demo users
+     */
+    private function createDemoUsers($demoOrg)
+    {
+        // Create owner user
+        $owner = User::firstOrCreate(
+            ['email' => 'owner@gmail.com'],
+            [
+                'name' => 'Organization Owner',
+                'password' => bcrypt('password'),
+                'organization_id' => $demoOrg->id,
+                'role' => 'admin', // Use 'admin' for users table, 'owner' for pivot table
+                'email_verified_at' => now(),
+            ]
+        );
+        
+        // Create member user
+        $member = User::firstOrCreate(
+            ['email' => 'member@gmail.com'],
+            [
+                'name' => 'Team Member',
+                'password' => bcrypt('password'),
+                'organization_id' => $demoOrg->id,
+                'role' => 'member',
+                'email_verified_at' => now(),
+            ]
+        );
+        
+        // Add users to organization (if not already attached)
+        if (!$demoOrg->users()->where('user_id', $owner->id)->exists()) {
+            $demoOrg->users()->attach($owner->id, [
+                'role' => 'owner',
+                'permissions' => [
+                    'manage_organization' => true,
+                    'manage_users' => true,
+                    'manage_teams' => true,
+                    'manage_services' => true,
+                    'manage_incidents' => true,
+                    'manage_maintenance' => true,
+                    'view_analytics' => true,
+                ],
+                'is_active' => true,
+                'invited_by' => $owner->id,
+                'joined_at' => now(),
+            ]);
+        }
+        
+        if (!$demoOrg->users()->where('user_id', $member->id)->exists()) {
+            $demoOrg->users()->attach($member->id, [
+                'role' => 'member',
+                'permissions' => [
+                    'view_services' => true,
+                    'view_incidents' => true,
+                    'view_maintenance' => true,
+                ],
+                'is_active' => true,
+                'invited_by' => $owner->id,
+                'joined_at' => now(),
+            ]);
+        }
+        
+        $this->info('Created owner user: ' . $owner->email);
+        $this->info('Created member user: ' . $member->email);
+        
+        return $owner;
     }
     
     /**
@@ -149,37 +210,37 @@ class EnsureDemoData extends Command
         
         $services = [
             [
-                'name' => 'API Gateway',
-                'description' => 'Main API gateway service handling all external requests',
+                'name' => 'Robot Control System',
+                'description' => 'Central control system for all robotic operations and automation',
                 'status' => ServiceStatus::OPERATIONAL->value,
                 'visibility' => 'public',
                 'order' => 1,
             ],
             [
-                'name' => 'Database',
-                'description' => 'Primary database cluster',
+                'name' => 'AI Processing Engine',
+                'description' => 'Machine learning and AI processing for robot decision making',
                 'status' => ServiceStatus::OPERATIONAL->value,
                 'visibility' => 'public',
                 'order' => 2,
             ],
             [
-                'name' => 'CDN',
-                'description' => 'Content delivery network for static assets',
-                'status' => ServiceStatus::OPERATIONAL->value,
+                'name' => 'Sensor Network',
+                'description' => 'Distributed sensor network for environmental monitoring',
+                'status' => ServiceStatus::DEGRADED->value,
                 'visibility' => 'public',
                 'order' => 3,
             ],
             [
-                'name' => 'Email Service',
-                'description' => 'Email delivery and processing service',
-                'status' => ServiceStatus::DEGRADED->value,
+                'name' => 'Communication Hub',
+                'description' => 'Inter-robot communication and coordination system',
+                'status' => ServiceStatus::OPERATIONAL->value,
                 'visibility' => 'public',
                 'order' => 4,
             ],
             [
-                'name' => 'Payment Processing',
-                'description' => 'Payment gateway and transaction processing',
-                'status' => ServiceStatus::OPERATIONAL->value,
+                'name' => 'Power Management',
+                'description' => 'Battery monitoring and power distribution system',
+                'status' => ServiceStatus::PARTIAL_OUTAGE->value,
                 'visibility' => 'public',
                 'order' => 5,
             ],
@@ -206,35 +267,35 @@ class EnsureDemoData extends Command
      */
     private function createDemoIncidents($demoOrg, $demoUser)
     {
-        $emailService = Service::where('organization_id', $demoOrg->id)
-            ->where('name', 'Email Service')
+        $sensorService = Service::where('organization_id', $demoOrg->id)
+            ->where('name', 'Sensor Network')
             ->first();
             
-        if ($emailService) {
+        if ($sensorService) {
             $incident = Incident::create([
                 'organization_id' => $demoOrg->id,
-                'service_id' => $emailService->id,
-                'title' => 'Email delivery delays',
-                'description' => 'We are experiencing delays in email delivery due to increased load',
-                'status' => IncidentStatus::MONITORING->value,
+                'service_id' => $sensorService->id,
+                'title' => 'Sensor Network Performance Degradation',
+                'description' => 'Multiple sensors are reporting intermittent connectivity issues, affecting data collection accuracy.',
+                'status' => IncidentStatus::INVESTIGATING->value,
                 'severity' => IncidentSeverity::MEDIUM->value,
                 'created_by' => $demoUser->id,
             ]);
             
-            $incident->services()->attach($emailService->id);
+            $incident->services()->attach($sensorService->id);
             
             // Add some updates
             IncidentUpdate::create([
                 'incident_id' => $incident->id,
-                'description' => 'We have identified the issue and are working on a fix',
-                'status' => IncidentStatus::IDENTIFIED->value,
+                'description' => 'Initial investigation shows network congestion in the sensor cluster. Engineers are analyzing the root cause.',
+                'status' => IncidentStatus::INVESTIGATING->value,
                 'created_by' => $demoUser->id,
             ]);
             
             IncidentUpdate::create([
                 'incident_id' => $incident->id,
-                'description' => 'A fix has been implemented. We are monitoring the situation',
-                'status' => IncidentStatus::MONITORING->value,
+                'description' => 'Root cause identified: firmware issue in sensor nodes. Patch deployment in progress.',
+                'status' => IncidentStatus::IDENTIFIED->value,
                 'created_by' => $demoUser->id,
             ]);
             
@@ -247,23 +308,23 @@ class EnsureDemoData extends Command
      */
     private function createDemoMaintenance($demoOrg, $demoUser)
     {
-        $database = Service::where('organization_id', $demoOrg->id)
-            ->where('name', 'Database')
+        $aiService = Service::where('organization_id', $demoOrg->id)
+            ->where('name', 'AI Processing Engine')
             ->first();
             
-        if ($database) {
+        if ($aiService) {
             Maintenance::create([
                 'organization_id' => $demoOrg->id,
-                'service_id' => $database->id,
-                'title' => 'Database maintenance',
-                'description' => 'Scheduled database maintenance for performance optimization',
+                'service_id' => $aiService->id,
+                'title' => 'AI Model Update and Optimization',
+                'description' => 'Scheduled update of machine learning models and performance optimization of the AI processing engine.',
                 'status' => MaintenanceStatus::SCHEDULED->value,
-                'scheduled_start' => now()->addDays(7),
-                'scheduled_end' => now()->addDays(7)->addHours(2),
+                'scheduled_start' => now()->addDays(3)->setTime(2, 0, 0),
+                'scheduled_end' => now()->addDays(3)->setTime(6, 0, 0),
                 'created_by' => $demoUser->id,
             ]);
             
-            $this->info('Created demo maintenance');
+            $this->info('Created demo maintenance: AI Model Update');
         }
     }
 } 

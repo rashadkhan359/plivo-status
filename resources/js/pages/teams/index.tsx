@@ -134,7 +134,7 @@ export default function TeamIndex({ teams }: PageProps<Props>) {
                                                 {team.members.slice(0, 3).map((member: any) => (
                                                     <Badge 
                                                         key={member.id} 
-                                                        variant={member.pivot.role === 'lead' ? 'default' : 'secondary'}
+                                                        variant={member.pivot.role === 'lead' ? 'info' : 'outline'}
                                                         className="text-xs"
                                                     >
                                                         {member.name}
@@ -142,7 +142,7 @@ export default function TeamIndex({ teams }: PageProps<Props>) {
                                                     </Badge>
                                                 ))}
                                                 {team.members.length > 3 && (
-                                                    <Badge variant="outline" className="text-xs">
+                                                    <Badge variant="muted" className="text-xs">
                                                         +{team.members.length - 3} more
                                                     </Badge>
                                                 )}

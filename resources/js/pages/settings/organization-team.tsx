@@ -106,9 +106,9 @@ export default function OrganizationTeam({
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'owner':
-                return <Badge variant="default" className="bg-purple-100 text-purple-800">Owner</Badge>;
+                return <Badge variant="success">Owner</Badge>;
             case 'admin':
-                return <Badge variant="default" className="bg-yellow-100 text-yellow-800">Admin</Badge>;
+                return <Badge variant="warning">Admin</Badge>;
             case 'member':
                 return <Badge variant="secondary">Member</Badge>;
             default:

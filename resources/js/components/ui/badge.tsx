@@ -10,21 +10,21 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-primary/20 bg-primary/10 text-primary-foreground shadow-primary/20 [a&]:hover:bg-primary/20 [a&]:hover:shadow-primary/30",
+          "border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
         secondary:
-          "border-secondary/20 bg-secondary/10 text-secondary-foreground shadow-secondary/20 [a&]:hover:bg-secondary/20 [a&]:hover:shadow-secondary/30",
+          "border-border bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         destructive:
-          "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400 shadow-red-500/20 [a&]:hover:bg-red-500/20 [a&]:hover:shadow-red-500/30 focus-visible:ring-red-500/20 dark:focus-visible:ring-red-500/40",
+          "border-destructive bg-destructive text-white shadow-sm hover:bg-destructive/90",
         outline:
-          "border-border/50 bg-background/50 text-foreground shadow-border/20 [a&]:hover:bg-accent/50 [a&]:hover:text-accent-foreground [a&]:hover:shadow-accent/30",
+          "border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground",
         success:
-          "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 shadow-emerald-500/20 [a&]:hover:bg-emerald-500/20 [a&]:hover:shadow-emerald-500/30",
+          "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900 dark:text-green-100 shadow-sm hover:bg-green-200 dark:hover:bg-green-800",
         warning:
-          "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400 shadow-amber-500/20 [a&]:hover:bg-amber-500/20 [a&]:hover:shadow-amber-500/30",
+          "border-yellow-200 bg-yellow-100 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900 dark:text-yellow-100 shadow-sm hover:bg-yellow-200 dark:hover:bg-yellow-800",
         info:
-          "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-400 shadow-blue-500/20 [a&]:hover:bg-blue-500/20 [a&]:hover:shadow-blue-500/30",
+          "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-900 dark:text-blue-100 shadow-sm hover:bg-blue-200 dark:hover:bg-blue-800",
         muted:
-          "border-muted/20 bg-muted/10 text-muted-foreground shadow-muted/20 [a&]:hover:bg-muted/20 [a&]:hover:shadow-muted/30",
+          "border-muted bg-muted text-muted-foreground shadow-sm hover:bg-muted/80",
       },
     },
     defaultVariants: {

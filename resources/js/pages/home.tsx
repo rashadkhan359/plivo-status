@@ -62,7 +62,7 @@ export default function Home({ auth }: { auth: any }) {
                     Go to Dashboard
                   </Button>
                 </Link>
-                <Link href={route('status.public', { organization: 'demo-org' })}>
+                <Link href={route('status.public', { organization: 'xkcd-robotics' })}>
                   <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                     <Eye className="mr-2 h-5 w-5" />
                     View Demo
@@ -179,7 +179,7 @@ export default function Home({ auth }: { auth: any }) {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Link href={route('status.public', { organization: 'demo-org' })}>
+              <Link href={route('status.public', { organization: 'xkcd-robotics' })}>
                 <Button size="lg" variant="outline" className="text-lg px-8 py-6">
                   <Play className="mr-2 h-5 w-5" />
                   View Live Demo
@@ -292,7 +292,7 @@ export default function Home({ auth }: { auth: any }) {
                 </div>
               </div>
               <div className="mt-8">
-                <Link href={route('status.public', { organization: 'demo-org' })}>
+                <Link href={route('status.public', { organization: 'xkcd-robotics' })}>
                   <Button size="lg" className="text-lg">
                     <Eye className="mr-2 h-5 w-5" />
                     View Demo Status Page
